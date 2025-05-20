@@ -50,6 +50,7 @@
 ### 4. 필수 라이브러리 설치
 ```
 pip install -r requirements.txt
+pip install -e . 
 ```
 
 ### 5. 환경변수 파일 준비
@@ -72,7 +73,6 @@ python -m autofic_core.cli --repo https://github.com/AutoFiC/autofic-core.git
 ### 2. 개발 모드 설치 후 명령어로 실행
 
 ```
-pip install -e .
 autofic-core --repo https://github.com/AutoFiC/autofic-core.git
 ```
 
@@ -84,7 +84,7 @@ autofic-core --repo https://github.com/AutoFiC/autofic-core.git
 pytest tests/ 
 ``` 
 
-- 모든 테스트가 **passed** 되면 정상입니다.
+- 모든 테스트가 **passed** 되면 정상 
 
 ---
 
@@ -103,22 +103,9 @@ pytest tests/
 
 ---
 
-## 🛠️ 문제 해결
-
-- **pip, python 명령이 인식되지 않아요**  
-  → Python이 PATH에 등록되어 있는지 확인  
-- **가상환경 활성화가 안 돼요**  
-  → Windows: PowerShell/명령프롬프트/터미널 종류별로 위 안내 참고  
-- **라이브러리 설치 오류**  
-  → pip 최신화: `pip install --upgrade pip`  
-- **테스트 실패**  
-  → 코드 변경/환경변수 입력 여부 확인
-
----
-
 ## 👥 협업 규칙
 
-- **가상환경(venv)과 .env 파일은 절대 Git에 올리지 마세요!**
+- **가상환경(venv)과 .env 파일은 Git에 올리지 마세요!**
 - 기능 추가/수정은 반드시 브랜치 생성 후 Pull Request로 병합
 - 코드 리뷰/테스트 통과 후 main 브랜치에 반영
 
