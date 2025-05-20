@@ -47,13 +47,18 @@
 
 > 가상환경이 활성화되면 프롬프트 앞에 `(venv)`가 표시됩니다.
 
-### 4. 필수 라이브러리 설치
+### 4. pip 최신화 (권장) 
+```
+pip install --upgrade pip
+```
+
+### 5. 필수 라이브러리 및 개발 모드 설치
 ```
 pip install -r requirements.txt
 pip install -e . 
 ```
 
-### 5. 환경변수 파일 준비
+### 6. 환경변수 파일 준비
 ```
 cp .env.example .env
 ``` 
@@ -70,7 +75,7 @@ cp .env.example .env
 python -m autofic_core.cli --repo https://github.com/AutoFiC/autofic-core.git
 ```
 
-### 2. 개발 모드 설치 후 명령어로 실행
+### 2. 명령어로 실행 (개발 모드 설치 후) 
 
 ```
 autofic-core --repo https://github.com/AutoFiC/autofic-core.git
