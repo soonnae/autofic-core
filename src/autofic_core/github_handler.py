@@ -43,7 +43,7 @@ def get_repo_files(repo_url, file_extensions=(".js", ".mjs", ".jsx", ".ts"), sil
     js_files = []
     contents = repo.get_contents("")
 
-    print("탐색 중입니다.")
+    print("파일 탐색 시작...")
 
     while contents:
         file_content = contents.pop(0)
@@ -58,7 +58,5 @@ def get_repo_files(repo_url, file_extensions=(".js", ".mjs", ".jsx", ".ts"), sil
             })
             if not silent:
                 print(f"발견: {file_content.path}")
-                
-    print(f"JS 파일 {len(js_files)}개를 찾았습니다:")
 
     return js_files
