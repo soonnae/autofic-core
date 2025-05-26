@@ -1,16 +1,7 @@
 import os
 import requests
-from .github_handler import get_repo_files
 
-def download_files(repo_url, save_dir="downloaded_repo", silent=False):
-    """GitHub 저장소에서 JS 파일 목록을 가져와 다운로드합니다."""
-
-    js_files = get_repo_files(repo_url, silent=silent)
-
-    if not js_files:
-        if not silent:
-            print("JS 파일을 찾지 못했습니다.")
-        return
+def download_files(js_files, save_dir="downloaded_repo", silent=False):
 
     for file in js_files:
         path = file["path"]

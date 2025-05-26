@@ -20,7 +20,7 @@ def main(repo, silent, save_dir):
         for file in files:
             print(f"{file['path']} -> {file['download_url']}")
 
-    download_files(repo_url=repo, save_dir=save_dir, silent=silent)
+    download_files(js_files=files, save_dir=save_dir, silent=silent)
 
 if __name__ == '__main__':
     main()
