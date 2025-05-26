@@ -1,12 +1,17 @@
 import click
 from autofic_core.github_handler import get_repo_files
 from autofic_core.downloader import download_files  
+from autofic_core.semgrep_preprocessor import preprocess_semgrep_results
 
 @click.command()
 @click.option('--repo', help='GitHub repository URL')
 @click.option('--silent', is_flag=True, help="결과 출력 없이 조용히 실행")
 @click.option('--save-dir', default="downloaded_repo", help="저장할 디렉토리 경로")
-def main(repo, silent, save_dir):
+@click.option('--preprocess-semgrep', is_flag=True, help="Semgrep 결과 전처리 수행")
+@click.option('--semgrep-input', default="semgrep_output.json", help="Semgrep 원본 결과 경로")
+@click.option('--semgrep-output', default="llm_input.json", help="LLM 입력용 변환 결과 저장 경로")
+
+def main(repo, silent, save_dir, preprocess_semgrep, semgrep_input, semgrep_output):
     click.echo(f"Analyzing repo: {repo}")
 
     files = get_repo_files(repo, silent=silent)
@@ -21,6 +26,9 @@ def main(repo, silent, save_dir):
             print(f"{file['path']} -> {file['download_url']}")
 
     download_files(repo_url=repo, save_dir=save_dir, silent=silent)
+
+    if preprocess_semgrep:
+        preprocess_semgrep_results(semgrep_input, semgrep_output)
 
 if __name__ == '__main__':
     main()
