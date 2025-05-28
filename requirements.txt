@@ -2,7 +2,7 @@
 certifi==2025.4.26
 cffi==1.17.1
 charset-normalizer==3.4.2
-click==8.2.1
+click==8.1.8
 cryptography==45.0.2
 Deprecated==1.2.18
 idna==3.10
@@ -19,7 +19,8 @@ PyNaCl==1.5.0
 pytest==8.3.5
 python-dotenv==1.1.0
 requests==2.32.3
-rich==14.0.0
+rich==13.5.2
 typing_extensions==4.13.2
 urllib3==2.4.0
 wrapt==1.17.2
+semgrep==1.122.0     
