@@ -28,4 +28,5 @@ def preprocess_semgrep_results(input_json_path: str, output_json_path: str, base
     with open(output_json_path, 'w', encoding='utf-8') as f:
         json.dump(processed, f, indent=4, ensure_ascii=False)
 
-    print(f"Preprocessing complete. Output saved to: {output_json_path}")
+    return output_json_path
+    
