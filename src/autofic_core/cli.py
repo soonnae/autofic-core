@@ -3,14 +3,18 @@ import json
 from autofic_core.github_handler import get_repo_files
 from autofic_core.downloader import download_files  
 from autofic_core.sast import run_semgrep
+from autofic_core.semgrep_preprocessor import preprocess_semgrep_results, save_json_file, read_json_file
 
 @click.command()
 @click.option('--repo', help='GitHub repository URL')
 @click.option('--save-dir', default="downloaded_repo", help="저장할 디렉토리 경로")
 @click.option('--sast', is_flag=True, help='SAST 분석 수행 여부')
 @click.option('--rule', default='p/javascript', help='Semgrep 규칙')
+@click.option('--preprocess-semgrep', is_flag=True, help="Semgrep 결과 전처리 수행")
+@click.option('--semgrep-result', default="semgrep_result.json", help="Semgrep 원본 결과 경로")
+@click.option('--llm-input', default="llm_input.json", help="LLM 입력용 변환 결과 저장 경로")
 
-def main(repo, save_dir, sast, rule):
+def main(repo, save_dir, sast, rule, preprocess_semgrep, semgrep_result, llm_input):
     click.echo(f"Analyzing repo: {repo}")
 
     click.echo("파일 탐색 시작 ...")
@@ -50,21 +54,16 @@ def main(repo, save_dir, sast, rule):
                 click.echo(semgrep_error or semgrep_output)
             
             return
-
-        click.echo("Semgrep 분석 완료!\n\n")
-        click.echo("[ Semgrep 결과 ]\n")
-
+            
+        save_json_file(json.loads(semgrep_output), semgrep_result)
+        click.echo(f"Semgrep 분석 완료! 결과가 '{semgrep_result}'에 저장되었습니다.")
+    
+    if preprocess_semgrep:
         try:
-            results_json = json.loads(semgrep_output)
-            results = results_json.get("results", [])
-
-            for result in results:
-                click.echo(json.dumps(result, indent=4))
-                click.echo('\n' + '-'*80 + '\n')
-
-        except json.JSONDecodeError:
-            click.echo("Semgrep 결과 JSON 파싱 실패")
-            click.echo(semgrep_output)    
+            output_json_path = preprocess_semgrep_results(semgrep_result, llm_input)
+            click.echo(f"전처리 완료: '{output_json_path}'에 저장되었습니다.")
+        except Exception as e:
+            click.echo(f"[ERROR] 전처리 실패: {e}")
 
 if __name__ == '__main__':
     main()
