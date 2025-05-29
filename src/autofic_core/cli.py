@@ -3,7 +3,7 @@ import json
 from autofic_core.github_handler import get_repo_files
 from autofic_core.downloader import download_files  
 from autofic_core.sast import run_semgrep
-from autofic_core.semgrep_preprocessor import preprocess_semgrep_results, save_json_file, read_json_file
+from autofic_core.semgrep_preprocessor import preprocess_semgrep_results, save_json_file 
 
 @click.command()
 @click.option('--repo', help='GitHub repository URL')
@@ -29,11 +29,11 @@ def main(repo, save_dir, sast, rule, preprocess_semgrep, semgrep_result, llm_inp
 
     for r in results:
         if r["status"] == "success":
-            print(f"{r['path']} 다운로드 완료")
+            click.echo(f"{r['path']} 다운로드 완료")
         elif r["status"] == "skipped":
-            print(f"{r['path']} 이미 존재함 - 건너뜀")
+            click.echo(f"{r['path']} 이미 존재함 - 건너뜀")
         else:
-            print(f"{r['path']} 다운로드 실패: {r['error']}")
+            click.echo(f"{r['path']} 다운로드 실패: {r['error']}")
 
     if sast:
         click.echo("\nSemgrep 분석 시작!")
