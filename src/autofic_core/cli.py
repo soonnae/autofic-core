@@ -6,24 +6,21 @@ from autofic_core.sast import run_semgrep
 
 @click.command()
 @click.option('--repo', help='GitHub repository URL')
-@click.option('--silent', is_flag=True, help="결과 출력 없이 조용히 실행")
 @click.option('--save-dir', default="downloaded_repo", help="저장할 디렉토리 경로")
 @click.option('--sast', is_flag=True, help='SAST 분석 수행 여부')
 @click.option('--rule', default='p/javascript', help='Semgrep 규칙')
-def main(repo, silent, save_dir, sast, rule):
+
+def main(repo, save_dir, sast, rule):
     click.echo(f"Analyzing repo: {repo}")
 
-    files = get_repo_files(repo, silent=silent)
+    click.echo("파일 탐색 시작 ...")
+    files = get_repo_files(repo)
 
     if not files:
-        print("JS 파일을 찾지 못했습니다. 저장소 구조 또는 필터 조건을 확인하세요.")
-        return
-
-    if not silent:
-        print(f"JS 파일 {len(files)}개를 찾았습니다:")
-        for file in files:
-            print(f"{file['path']} -> {file['download_url']}")
-
+        click.echo("JS 파일을 찾지 못했습니다. Github 연결이나 저장소를 확인하세요.")
+    
+    click.echo(f"JS 파일 {len(files)}개를 찾았습니다!")
+    
     results = download_files(js_files=files, save_dir=save_dir, silent=silent)
 
     if not silent:
