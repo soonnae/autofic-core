@@ -2,6 +2,7 @@ import os
 import requests
 
 def download_files(js_files, save_dir="downloaded_repo", silent=False):
+    results = []
 
     for file in js_files:
         path = file["path"]
@@ -10,11 +11,18 @@ def download_files(js_files, save_dir="downloaded_repo", silent=False):
 
         os.makedirs(os.path.dirname(local_path), exist_ok=True)
 
+        if os.path.exists(local_path):
+            results.append({"path": path, "status": "skipped"})
+            continue
+
         try:
             response = requests.get(url)
+            response.raise_for_status()
+
             with open(local_path, "wb") as f:
                 f.write(response.content)
-            if not silent:
-                print(f"{path} 다운로드 완료")
+            results.append({"path": path, "status": "success"})
         except Exception as e:
-            print(f"{path} 다운로드 실패: {e}")
+            results.append({"path": path, "status": "fail", "error": str(e)})
+
+    return results
