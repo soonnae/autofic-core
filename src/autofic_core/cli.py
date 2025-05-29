@@ -25,16 +25,15 @@ def main(repo, silent, save_dir, sast, rule, preprocess_semgrep, semgrep_output,
     
     click.echo(f"JS 파일 {len(files)}개를 찾았습니다!")
     
-    results = download_files(js_files=files, save_dir=save_dir, silent=silent)
+    results = download_files(js_files=files, save_dir=save_dir)
 
-    if not silent:
-        for r in results:
-            if r["status"] == "success":
-                print(f"{r['path']} 다운로드 완료")
-            elif r["status"] == "skipped":
-                print(f"{r['path']} 이미 존재함 - 건너뜀")
-            else:
-                print(f"{r['path']} 다운로드 실패: {r['error']}")
+    for r in results:
+        if r["status"] == "success":
+            print(f"{r['path']} 다운로드 완료")
+        elif r["status"] == "skipped":
+            print(f"{r['path']} 이미 존재함 - 건너뜀")
+        else:
+            print(f"{r['path']} 다운로드 실패: {r['error']}")
 
     if sast:
         click.echo("\nSemgrep 분석 시작!")
