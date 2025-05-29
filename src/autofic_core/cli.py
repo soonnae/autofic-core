@@ -4,6 +4,7 @@ from autofic_core.github_handler import get_repo_files
 from autofic_core.downloader import download_files  
 from autofic_core.sast import run_semgrep
 from autofic_core.semgrep_preprocessor import preprocess_semgrep_results, save_json_file 
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
 @click.command()
 @click.option('--repo', help='GitHub repository URL')
@@ -17,7 +18,7 @@ from autofic_core.semgrep_preprocessor import preprocess_semgrep_results, save_j
 def main(repo, save_dir, sast, rule, preprocess_semgrep, semgrep_result, llm_input):
     click.echo(f"Analyzing repo: {repo}")
 
-    click.echo("파일 탐색 시작 ...")
+    #click.echo("파일 탐색 시작 ...")
     files = get_repo_files(repo)
 
     if not files:
@@ -37,8 +38,17 @@ def main(repo, save_dir, sast, rule, preprocess_semgrep, semgrep_result, llm_inp
 
     if sast:
         click.echo("\nSemgrep 분석 시작!")
-        click.echo("Semgrep 분석 진행 중...")
-        semgrep_output, semgrep_error, semgrep_status = run_semgrep(save_dir, rule)
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[cyan]Semgrep 분석 중입니다..."),
+            transient=True
+        ) as progress:
+            task3 = progress.add_task("[cyan]Semgrep 분석 진행 중...", total=None)
+
+            semgrep_output, semgrep_error, semgrep_status = run_semgrep(save_dir, rule)
+
+            progress.update(task3, completed=1)
     
         if semgrep_status != 0:
             click.echo(f"\n[ ERROR ] Semgrep 실행 실패 (리턴 코드: {semgrep_status})\n")
