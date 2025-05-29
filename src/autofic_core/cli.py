@@ -10,7 +10,6 @@ from autofic_core.sast import run_semgrep
 @click.option('--save-dir', default="downloaded_repo", help="저장할 디렉토리 경로")
 @click.option('--sast', is_flag=True, help='SAST 분석 수행 여부')
 @click.option('--rule', default='p/javascript', help='Semgrep 규칙')
-
 def main(repo, silent, save_dir, sast, rule):
     click.echo(f"Analyzing repo: {repo}")
 
@@ -25,8 +24,17 @@ def main(repo, silent, save_dir, sast, rule):
         for file in files:
             print(f"{file['path']} -> {file['download_url']}")
 
-    download_files(js_files=files, save_dir=save_dir, silent=silent)
-    
+    results = download_files(js_files=files, save_dir=save_dir, silent=silent)
+
+    if not silent:
+        for r in results:
+            if r["status"] == "success":
+                print(f"{r['path']} 다운로드 완료")
+            elif r["status"] == "skipped":
+                print(f"{r['path']} 이미 존재함 - 건너뜀")
+            else:
+                print(f"{r['path']} 다운로드 실패: {r['error']}")
+
     if sast:
         click.echo("\nSemgrep 분석 시작!")
         click.echo("Semgrep 분석 진행 중...")
