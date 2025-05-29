@@ -2,8 +2,8 @@ import click
 import json
 from autofic_core.github_handler import get_repo_files
 from autofic_core.downloader import download_files  
-from autofic_core.semgrep_preprocessor import preprocess_semgrep_results
 from autofic_core.sast import run_semgrep
+from autofic_core.semgrep_preprocessor import preprocess_semgrep_results, save_json_file, read_json_file
 
 @click.command()
 @click.option('--repo', help='GitHub repository URL')
@@ -11,10 +11,10 @@ from autofic_core.sast import run_semgrep
 @click.option('--sast', is_flag=True, help='SAST 분석 수행 여부')
 @click.option('--rule', default='p/javascript', help='Semgrep 규칙')
 @click.option('--preprocess-semgrep', is_flag=True, help="Semgrep 결과 전처리 수행")
-@click.option('--semgrep-output', default="semgrep_output.json", help="Semgrep 원본 결과 경로")
+@click.option('--semgrep-result', default="semgrep_result.json", help="Semgrep 원본 결과 경로")
 @click.option('--llm-input', default="llm_input.json", help="LLM 입력용 변환 결과 저장 경로")
 
-def main(repo, silent, save_dir, sast, rule, preprocess_semgrep, semgrep_output, llm_input):
+def main(repo, save_dir, sast, rule, preprocess_semgrep, semgrep_result, llm_input):
     click.echo(f"Analyzing repo: {repo}")
 
     click.echo("파일 탐색 시작 ...")
@@ -54,25 +54,16 @@ def main(repo, silent, save_dir, sast, rule, preprocess_semgrep, semgrep_output,
                 click.echo(semgrep_error or semgrep_output)
             
             return
-
-        click.echo("Semgrep 분석 완료!\n\n")
-
-        try:
-            with open(semgrep_output, 'r', encoding='utf-8') as f:
-                results_json = json.load(f)
-            with open(semgrep_output, 'w', encoding='utf-8') as f:
-                json.dump(results_json, f, indent=4, ensure_ascii=False)
-            click.echo(f"Semgrep 결과가 '{semgrep_output}'에 저장되었습니다.")
-
-        except (json.JSONDecodeError, OSError) as e:
-            click.echo(f"[ ERROR ] Semgrep 결과 파일 저장 중 문제 발생: {e}")  
-
+            
+        save_json_file(json.loads(semgrep_output), semgrep_result)
+        click.echo(f"Semgrep 분석 완료! 결과가 '{semgrep_result}'에 저장되었습니다.")
+    
     if preprocess_semgrep:
-        output_json_path = preprocess_semgrep_results(semgrep_output, llm_input)
-        if output_json_path:
-            click.echo(f"전처리 완료된 JSON 파일이 '{output_json_path}'에 저장되었습니다.")
-        else:
-            click.echo("[ ERROR ] 전처리 실패")
+        try:
+            output_json_path = preprocess_semgrep_results(semgrep_result, llm_input)
+            click.echo(f"전처리 완료: '{output_json_path}'에 저장되었습니다.")
+        except Exception as e:
+            click.echo(f"[ERROR] 전처리 실패: {e}")
 
 if __name__ == '__main__':
     main()

@@ -1,56 +1,37 @@
 import json
 from pathlib import Path
 
-def preprocess_semgrep_results(input_json_path: str, output_json_path: str, base_dir: str = "./"):
-    try:
-        with open(input_json_path, 'r', encoding='utf-8') as f:
-            results = json.load(f)
-    except (OSError, json.JSONDecodeError) as e:
-        print(f"[입력 파일 오류] {e}")
-        return None
+def read_json_file(path: str) -> dict:
+    with open(path, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
-    base_dir = Path(base_dir).resolve()  
+def save_json_file(data: dict, path: str) -> None:
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+
+def extract_code_snippet(file_path: Path, start: int, end: int) -> str:
+    lines = file_path.read_text(encoding='utf-8').splitlines()
+    return "\n".join(lines[start-1:end])
+
+def preprocess_semgrep_results(input_json_path: str, output_json_path: str, base_dir: str = ".") -> str:
+    results = read_json_file(input_json_path)
+    base_dir = Path(base_dir).resolve()
     processed = []
-
     for idx, result in enumerate(results.get("results", [])):
-        raw_path = result.get("path", "")
-        file_path = (base_dir / raw_path).resolve()
-
-        start_line = result.get("start", {}).get("line", None)
-        end_line = result.get("end", {}).get("line", None)
-
-        code_snippet = ""
-
-        if file_path.exists() and isinstance(start_line, int) and isinstance(end_line, int):
-            try:
-                with open(file_path, 'r', encoding='utf-8') as src_file:
-                    lines = src_file.readlines()   
-                    code_snippet = "".join(lines[start_line-1:end_line])
-            except Exception as e:
-                print(f"[파일 읽기 실패] {file_path} - {e}")
-        else:
-            print(f"[코드 추출 실패] {file_path}, lines {start_line}-{end_line}")
-
+        path = base_dir / result.get("path", "")
+        snippet = extract_code_snippet(path, result["start"]["line"], result["end"]["line"])
         extra = result.get("extra", {})
-        metadata = extra.get("metadata", {})
-
+        meta = extra.get("metadata", {})
         processed.append({
-            "Instruction": "Refactor the code below to fix the security vulnerability and include a brief remediation guide.",
-            "input": code_snippet.strip(),
+            "instruction": "Refactor the code below to fix the security vulnerability and include a brief remediation guide.",
+            "input": snippet.strip(),
             "output": "",
-            "idx": idx, 
+            "idx": idx,
             "message": extra.get("message", ""),
-            "vulnerability_class": metadata.get("vulnerability_class", []),
-            "cwe": metadata.get("cwe", []),
+            "vulnerability_class": meta.get("vulnerability_class", []),
+            "cwe": meta.get("cwe", []),
             "severity": extra.get("severity", ""),
-            "references": metadata.get("references", [])
+            "references": meta.get("references", [])
         })
-
-    try: 
-        with open(output_json_path, 'w', encoding='utf-8') as f:
-            json.dump(processed, f, indent=4, ensure_ascii=False)
-    except Exception as e:
-        print(f"[결과 저장 실패] {e}")
-        return None
-
+    save_json_file(processed, output_json_path)
     return output_json_path
