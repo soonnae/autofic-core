@@ -1,7 +1,7 @@
 import os
 import requests
 
-def download_files(js_files, save_dir="downloaded_repo"):
+def download_files(js_files, save_dir="downloaded_repo", silent=False):
     results = []
 
     for file in js_files:
