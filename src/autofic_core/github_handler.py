@@ -4,6 +4,8 @@ import os
 from github import Github
 from dotenv import load_dotenv
 from urllib.parse import urlparse
+from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn
+import time
 
 load_dotenv()  # .env 파일에서 환경 변수 로드
 
@@ -34,14 +36,31 @@ def get_repo_files(repo_url, file_extensions=(".js", ".mjs", ".jsx", ".ts")):
     js_files = []
     contents = repo.get_contents("")
 
-    while contents:
-        file_content = contents.pop(0)
-        if file_content.type == "dir":
-            contents.extend(repo.get_contents(file_content.path))
-        elif file_content.name.endswith(file_extensions) and file_content.download_url:
-            js_files.append({
-                "path": file_content.path,
-                "download_url": file_content.download_url
-            })
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]{task.description}"),
+        BarColumn(bar_width=None, style="green", complete_style="green"),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        transient=False
+
+    ) as progress:
+        task1 = progress.add_task("[cyan]파일 탐색 중...", total=100)
+        for i in range(100):
+            progress.update(task1, advance=1)
+            time.sleep(0.05)
+
+        while contents:
+            file_content = contents.pop(0)
+            progress.advance(task1)
+
+            if file_content.type == "dir":
+                contents.extend(repo.get_contents(file_content.path))
+            elif file_content.name.endswith(file_extensions) and file_content.download_url:
+                js_files.append({
+                    "path": file_content.path,
+                    "download_url": file_content.download_url
+                })
+        
+        progress.update(task1, completed=100)
 
     return js_files
