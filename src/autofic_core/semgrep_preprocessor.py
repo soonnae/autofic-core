@@ -31,6 +31,8 @@ def preprocess_semgrep_results(input_json_path: str, output_json_path: str, base
             "input": full_code.strip(),
             "output": "",
             "idx": idx,
+            "start_line": start_line,
+            "end_line": end_line,
             "snippet": snippet.strip(), 
             "message": extra.get("message", ""),
             "vulnerability_class": meta.get("vulnerability_class", []),
