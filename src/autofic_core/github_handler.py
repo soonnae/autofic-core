@@ -1,66 +1,51 @@
-# autofic_core/github_handler.py
-
 import os
 from github import Github
 from dotenv import load_dotenv
 from urllib.parse import urlparse
-from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn
-import time
+from autofic_core.errors import GitHubTokenMissingError, RepoURLFormatError, RepoAccessError
 
-load_dotenv()  # .env 파일에서 환경 변수 로드
+load_dotenv()
+
+DEFAULT_EXTENSIONS = (".js", ".mjs", ".jsx", ".ts") 
+
+def get_github_token():
+    token = os.getenv("GITHUB_TOKEN")
+    if token:
+        return token 
+    raise GitHubTokenMissingError()
 
 def parse_repo_url(repo_url):
-    """URL에서 사용자명/저장소명을 추출"""
-    path = urlparse(repo_url).path.strip("/")
-    owner, repo_name = path.split("/")[:2]
-    if repo_name.endswith(".git"):
-        repo_name = repo_name[:-4]
-    return owner, repo_name
-
-def get_repo_files(repo_url, file_extensions=(".js", ".mjs", ".jsx", ".ts")):
-    token = os.getenv("GITHUB_TOKEN")
-    if not token:
-        raise ValueError("GITHUB_TOKEN이 .env에 없습니다.")
-
     try:
-        g = Github(token)
-    except Exception as e:
-        return []
-
-    try:
-        owner, repo_name = parse_repo_url(repo_url)
-        repo = g.get_repo(f"{owner}/{repo_name}")
-    except Exception as e:
-        return []
+        path = urlparse(repo_url).path.strip("/")
+        owner, repo_name = path.split("/")[:2]
+        repo_name = repo_name[:-4] if repo_name.endswith(".git") else repo_name
+        return owner, repo_name
+    except ValueError:
+        raise RepoURLFormatError(repo_url)
     
+def fetch_github_repo(token, owner, repo_name):
+    full_name = f"{owner}/{repo_name}"
+    try:
+        return Github(token).get_repo(full_name)
+    except Exception as e:
+        raise RepoAccessError(f"{full_name}: {e}")
+
+def collect_files_by_extension(repo, extensions):
     js_files = []
     contents = repo.get_contents("")
-
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[bold blue]{task.description}"),
-        BarColumn(bar_width=None, style="green", complete_style="green"),
-        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-        transient=False
-
-    ) as progress:
-        task1 = progress.add_task("[cyan]파일 탐색 중...", total=100)
-        for i in range(100):
-            progress.update(task1, advance=1)
-            time.sleep(0.05)
-
-        while contents:
-            file_content = contents.pop(0)
-            progress.advance(task1)
-
-            if file_content.type == "dir":
-                contents.extend(repo.get_contents(file_content.path))
-            elif file_content.name.endswith(file_extensions) and file_content.download_url:
-                js_files.append({
-                    "path": file_content.path,
-                    "download_url": file_content.download_url
-                })
-        
-        progress.update(task1, completed=100)
-
+    while contents:
+        file = contents.pop(0)
+        try:
+            if file.type == "dir":
+                contents.extend(repo.get_contents(file.path))
+            elif file.name.endswith(extensions) and file.download_url:
+                js_files.append({"path": file.path, "download_url": file.download_url})
+        except Exception:
+            continue
     return js_files
+
+def get_repo_files(repo_url, file_extensions=DEFAULT_EXTENSIONS):
+    token = get_github_token()
+    owner, repo_name = parse_repo_url(repo_url)
+    repo = fetch_github_repo(token, owner, repo_name)
+    return collect_files_by_extension(repo, file_extensions)
