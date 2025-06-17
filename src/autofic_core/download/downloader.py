@@ -14,7 +14,7 @@ class DownloadResult(BaseModel):
     error: Optional[str] = None
 
 class FileDownloader(BaseModel):
-    save_dir: str = Field(default="downloaded_repo")
+    save_dir: str = Field(default_factory=lambda: os.getenv("DOWNLOAD_SAVE_DIR"))
 
     def download_file(self, file: FileInfo) -> DownloadResult:
         local_path = os.path.join(self.save_dir, file.path)

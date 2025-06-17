@@ -1,23 +1,24 @@
 import os
 from github import Github
-from dotenv import load_dotenv
 from urllib.parse import urlparse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from autofic_core.errors import GitHubTokenMissingError, RepoURLFormatError, RepoAccessError
-
-load_dotenv()
-
-DEFAULT_EXTENSIONS = (".js", ".mjs", ".jsx", ".ts") 
 
 class RepoFile(BaseModel):
     path: str
     download_url: str
 
-class GitHubRepoHandler:
-    def __init__(self, repo_url: str, file_extensions=DEFAULT_EXTENSIONS):
-        self.repo_url = repo_url
-        self.file_extensions = file_extensions
-        self.token = os.getenv("GITHUB_TOKEN")
+class GitHubRepoHandler(BaseModel):
+    repo_url: str
+    file_extensions: tuple = Field(
+        default_factory=lambda: tuple(
+            ext.strip() for ext in os.getenv("GITHUB_EXTENSIONS", "").split(",") if ext.strip()
+        )
+    )
+    token: str = Field(default_factory=lambda: os.getenv("GITHUB_TOKEN"))
+
+    def __init__(self, **data):
+        super().__init__(**data)
         if not self.token:
             raise GitHubTokenMissingError()
         

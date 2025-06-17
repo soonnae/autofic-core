@@ -1,24 +1,27 @@
 import click
 import json
 import time
+import os
+from dotenv import load_dotenv
 from autofic_core.download.github_handler import GitHubRepoHandler
 from autofic_core.download.downloader import FileDownloader
 from autofic_core.sast.semgrep import SemgrepRunner
 from autofic_core.sast.semgrep_preprocessor import SemgrepPreprocessor 
 from autofic_core.utils.progress_utils import create_progress
-
+    
+load_dotenv()        
 @click.command()
 @click.option('--repo', help='GitHub repository URL')
-@click.option('--save-dir', default="downloaded_repo", help="저장할 디렉토리 경로")
+@click.option('--save-dir', default=os.getenv("DOWNLOAD_SAVE_DIR"), help="저장할 디렉토리 경로")
 @click.option('--sast', is_flag=True, help='SAST 분석 수행 여부')
-@click.option('--rule', default='p/javascript', help='Semgrep 규칙')
-@click.option('--semgrep-result', default="semgrep_result.json", help="Semgrep 원본 결과 경로")
+@click.option('--rule', default=os.getenv("SEMGREP_RULE"), help='Semgrep 규칙')
+@click.option('--semgrep-result', default=os.getenv("SEMGREP_RESULT_PATH"), help="Semgrep 원본 결과 경로")
 
 def main(repo, save_dir, sast, rule, semgrep_result):
     run_cli(repo, save_dir, sast, rule, semgrep_result)
 
 def run_cli(repo, save_dir, sast, rule, semgrep_result):
-            
+    
     """ GitHub 저장소 분석 """
 
     click.echo(f"\n저장소 분석 시작: {repo}\n")
