@@ -177,4 +177,4 @@ cython_debug/
 .DS_Store
 
 # Downloaded folder
-autofic-core/src/downloaded_folder/
+autofic-core/artifacts/downloaded_repo/
