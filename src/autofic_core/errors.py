@@ -33,3 +33,22 @@ class SemgrepExecutionError(AutoficError):
         self.stderr = stderr
         message = f"Semgrep 실행 실패 (리턴 코드: {returncode})"
         super().__init__(message)
+            
+# prompt_generator.py
+
+class PromptGeneratorErrorCodes:
+    EMPTY_SNIPPET = "EMPTY_SNIPPET"
+    TEMPLATE_RENDER_ERROR = "TEMPLATE_RENDER_ERROR"
+    INVALID_SNIPPET_LIST = "INVALID_SNIPPET_LIST"
+
+
+class PromptGeneratorErrorMessages:
+    EMPTY_SNIPPET = "빈 코드 스니펫입니다."
+    TEMPLATE_RENDER_ERROR = "템플릿 렌더링 중 오류가 발생했습니다."
+    INVALID_SNIPPET_LIST = "SemgrepSnippet 리스트가 아닙니다."
+
+
+class PromptGenerationException(AutoficError):
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
