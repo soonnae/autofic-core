@@ -8,6 +8,7 @@ from autofic_core.download.downloader import FileDownloader
 from autofic_core.sast.semgrep import SemgrepRunner
 from autofic_core.sast.semgrep_preprocessor import SemgrepPreprocessor 
 from autofic_core.utils.progress_utils import create_progress
+from autofic_core.llm.prompt_generator import PromptGenerator
     
 load_dotenv()        
 @click.command()
@@ -91,6 +92,13 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
         processed = SemgrepPreprocessor.preprocess(semgrep_result)
 
         ''' processed 활용해서 이후 개발 '''
+        vulnerable_snippets = [s for s in processed if s.message.strip()]
+        prompts = PromptGenerator().generate_prompts(vulnerable_snippets)
+
+        # 터미널 테스트용 출력 (LLM 연동 시 삭제)
+        for i, prompt in enumerate(prompts):
+            click.echo(f"\n===== 프롬프트 {i} =====\n")
+            click.echo(prompt.prompt)
 
 if __name__ == '__main__':
     main()
