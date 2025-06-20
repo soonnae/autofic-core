@@ -20,6 +20,7 @@ load_dotenv()
 @click.option('--sast', is_flag=True, help='SAST 분석 수행 여부')
 @click.option('--rule', default=os.getenv("SEMGREP_RULE"), help='Semgrep 규칙')
 @click.option('--semgrep-result', default=os.getenv("SEMGREP_RESULT_PATH"), help="Semgrep 원본 결과 경로")
+
 def main(repo, save_dir, sast, rule, semgrep_result):
     run_cli(repo, save_dir, sast, rule, semgrep_result)
 
@@ -38,7 +39,6 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
     if not files:
         click.secho("\n[ WARNING ] JS 파일을 찾지 못했습니다. 저장소 또는 GitHub 연결을 확인하세요.\n", fg="yellow")
         return 
-
     click.secho(f"\n[ SUCCESS ] JS 파일 {len(files)}개를 찾았습니다!\n", fg="green")
 
     """ 파일 다운로드 """
@@ -51,9 +51,9 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
             result = downloader.download_file(file)
             results.append(result)
             progress.update(task, advance=1)
-            time.sleep(0.05)  # 기존 속도 유지
+            time.sleep(0.05)  
         progress.update(task, completed=100)
-
+    click.echo()
     for r in results:
         if r.status == "success":
             click.secho(f"[ SUCCESS ] {r.path} 다운로드 완료", fg="green")
@@ -69,7 +69,7 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
             task = progress.add_task("[cyan]Semgrep 분석 진행 중...", total=100)
             for _ in range(100):
                 progress.update(task, advance=1)
-                time.sleep(0.05)  # 기존 속도 유지
+                time.sleep(0.05)  
             semgrep_runner = SemgrepRunner(repo_path=save_dir, rule=rule)
             semgrep_result_obj = semgrep_runner.run_semgrep()
             progress.update(task, completed=100)
@@ -90,10 +90,12 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
         click.secho(f"\n[ SUCCESS ] Semgrep 분석 완료! 결과가 '{semgrep_result}'에 저장되었습니다.\n", fg="green")
 
         processed = SemgrepPreprocessor.preprocess(semgrep_result)
-        vulnerable_snippets = [s for s in processed if s.message.strip()]
 
-        """ 프롬프트 생성 및 후속 처리 """
+        ''' processed 활용해서 이후 개발 '''
+        vulnerable_snippets = [s for s in processed if s.message.strip()]
         prompts = PromptGenerator().generate_prompts(vulnerable_snippets)
+        
+        '''LLM 호출 및 응답 저장 및 diff 생성 및 저장'''
         LLMRunner.run(prompts)
         DiffManager.generate_from_llm_response()
 
