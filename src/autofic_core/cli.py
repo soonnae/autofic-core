@@ -95,10 +95,5 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
         vulnerable_snippets = [s for s in processed if s.message.strip()]
         prompts = PromptGenerator().generate_prompts(vulnerable_snippets)
 
-        # 터미널 테스트용 출력 (LLM 연동 시 삭제)
-        for i, prompt in enumerate(prompts):
-            click.echo(f"\n===== 프롬프트 {i} =====\n")
-            click.echo(prompt.prompt)
-
 if __name__ == '__main__':
     main()
