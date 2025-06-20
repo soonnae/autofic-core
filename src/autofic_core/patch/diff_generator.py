@@ -1,8 +1,9 @@
 import difflib
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel
 from pathlib import Path
-from autofic_core.errors import DiffGenerationError 
+from autofic_core.errors import DiffGenerationError
+from autofic_core.llm.response_parser import ParsedCodeBlock
 
 class DiffResult(BaseModel):
     filename: str
@@ -13,7 +14,7 @@ class DiffResult(BaseModel):
 
 class DiffGenerator:
     def __init__(self, downloaded_dir: str = "artifacts/downloaded_repo", diff_dir: str = "artifacts/diffs"):
-        base_dir = Path(__file__).resolve().parents[2] 
+        base_dir = Path(__file__).resolve().parents[2]  
         self.downloaded_dir = base_dir / downloaded_dir
         self.diff_dir = base_dir / diff_dir
         self.diff_dir.mkdir(parents=True, exist_ok=True)
@@ -22,7 +23,7 @@ class DiffGenerator:
         original_path = self.downloaded_dir / relative_path
         try:
             if not original_path.exists():
-                raise FileNotFoundError(f"\uacbd\ub8e8 \ud30c\uc77c \uc5c6\uc74c: {original_path}")
+                raise FileNotFoundError(f"경로 파일 없음: {original_path}")
 
             original_lines = original_path.read_text(encoding="utf-8").splitlines()
             modified_lines = modified_code.strip().splitlines()
@@ -50,3 +51,32 @@ class DiffGenerator:
         diff_path.write_text(result.diff, encoding="utf-8")
         result.saved_path = str(diff_path)
         return diff_path
+
+    def generate_and_save(self, relative_path: str, modified_code: str) -> DiffResult:
+        result = self.generate_diff(relative_path, modified_code)
+        self.save_diff(result)
+        return result
+
+    def generate_from_blocks(self, blocks: List[ParsedCodeBlock]) -> List[DiffResult]:
+        results = []
+        for block in blocks:
+            if not block.filename:
+                results.append(DiffResult(
+                    filename="(unknown)",
+                    diff="",
+                    success=False,
+                    error="filename 주석 누락"
+                ))
+                continue
+
+            try:
+                result = self.generate_and_save(block.filename, block.code)
+                results.append(result)
+            except DiffGenerationError as e:
+                results.append(DiffResult(
+                    filename=e.filename,
+                    diff="",
+                    success=False,
+                    error=e.reason
+                ))
+        return results

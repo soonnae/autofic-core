@@ -1,6 +1,7 @@
 import re
-from typing import List, Optional
+from typing import List, Optional, Union
 from pydantic import BaseModel
+from pathlib import Path
 
 class ParsedCodeBlock(BaseModel):
     language: str
@@ -20,7 +21,6 @@ class LLMResponseParser:
                 code_blocks.append(
                     ParsedCodeBlock(language=language, code=code.strip(), filename=filename)
                 )
-
         return code_blocks
 
     @staticmethod
@@ -28,3 +28,11 @@ class LLMResponseParser:
         filename_pattern = r"(?:\/\/|#|\/\*)\s*filename:\s*(.+?)(?:\s|\*\/|$)"
         match = re.search(filename_pattern, code)
         return match.group(1).strip() if match else None
+
+    @staticmethod
+    def load_and_parse(path: Union[str, Path]) -> List[ParsedCodeBlock]:
+        try:
+            content = Path(path).read_text(encoding="utf-8")
+            return LLMResponseParser.extract_code_blocks(content)
+        except Exception as e:
+            raise RuntimeError(f"[LLM 응답 파일 로딩 실패] {path}: {e}")
