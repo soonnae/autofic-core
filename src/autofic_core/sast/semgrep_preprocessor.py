@@ -32,13 +32,23 @@ class SemgrepPreprocessor(BaseModel):
     @staticmethod
     def preprocess(input_json_path: str, base_dir: str = ".") -> list[SemgrepSnippet]:
         results = SemgrepPreprocessor.read_json_file(input_json_path)
-        base_dir = Path(base_dir).resolve()
+        base_dir_path = Path(base_dir).resolve()
         processed: list[SemgrepSnippet] = []
 
         for idx, result in enumerate(results.get("results", [])):
-            path = base_dir / result.get("path", "")
+            raw_path = result.get("path", "").strip().replace("\\", "/")
 
-            lines = path.read_text(encoding='utf-8').splitlines()
+            # rel_path에서 base_dir 중복 제거
+            rel_path = raw_path
+            if raw_path.startswith(str(base_dir).replace("\\", "/")):
+                rel_path = raw_path[len(str(base_dir).replace("\\", "/")):].lstrip("/")
+
+            file_path = (base_dir_path / rel_path).resolve()
+
+            if not file_path.exists():
+                raise FileNotFoundError(f"[ERROR] 파일을 찾을 수 없습니다: {file_path}")
+
+            lines = file_path.read_text(encoding='utf-8').splitlines()
             full_code = "\n".join(lines)
             start_line = result["start"]["line"]
             end_line = result["end"]["line"]
