@@ -2,9 +2,7 @@ import os
 import requests 
 from github import Github
 from github.Repository import Repository
-from github.GithubException import GithubException
 from urllib.parse import urlparse
-from pydantic import BaseModel, Field
 from autofic_core.errors import GitHubTokenMissingError, RepoAccessError, RepoURLFormatError, ForkFailedError
 
 class GitHubRepoHandler():
@@ -38,12 +36,11 @@ class GitHubRepoHandler():
     # 저장소 객체 반환 (Fork 여부에 따라 소유자 변경)
     def fetch_repo(self, use_forked: bool = False) -> Repository:
         owner = self._current_user if use_forked else self._owner
+        repo_name = f"{owner}/{self._name}"
         try:
-            return self.github.get_repo(f"{owner}/{self._name}")
-        except GithubException as e:
-            raise RepoAccessError(f"{owner}/{self._name}: [{e.status}] {e.data.get('message')}")
+            return self.github.get_repo(repo_name)
         except Exception as e:
-            raise RepoAccessError(f"{owner}/{self._name}: {e}")
+            raise RepoAccessError(f"{repo_name}: {e}")
 
     # 저장소를 현재 사용자 계정으로 Fork. 성공 여부 반환
     def fork(self) -> bool:

@@ -1,8 +1,7 @@
 import os
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import List
 from github.Repository import Repository 
-
 
 class RepoFile(BaseModel):
     """
@@ -17,11 +16,9 @@ class GitHubFileCollector():
     """
     def __init__(self, repo: Repository):
         self.repo = repo
-        self.file_extensions: tuple = Field(
-            default_factory=lambda: tuple(
-                ext.strip() for ext in os.getenv("GITHUB_EXTENSIONS", "").split(",") if ext.strip()
-            )
-    )
+        self.file_extensions: tuple = tuple(
+            ext.strip() for ext in os.getenv("GITHUB_EXTENSIONS", "").split(",") if ext.strip()
+        )
 
     def collect(self) -> List[RepoFile]:
         files = []

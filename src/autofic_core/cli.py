@@ -3,13 +3,13 @@ import json
 import time
 import os
 from dotenv import load_dotenv
-from autofic_core.download.github_handler import GitHubRepoHandler
-from autofic_core.download.downloader import FileDownloader
-from autofic_core.sast.semgrep import SemgrepRunner
-from autofic_core.sast.semgrep_preprocessor import SemgrepPreprocessor 
 from autofic_core.utils.progress_utils import create_progress
+from autofic_core.download.github_repo_handler import GitHubRepoHandler
+from autofic_core.download.github_file_collector import GitHubFileCollector
+from autofic_core.download.file_downloader import FileDownloader
+from autofic_core.sast.semgrep_runner import SemgrepRunner
+from autofic_core.sast.semgrep_preprocessor import SemgrepPreprocessor 
 from autofic_core.llm.prompt_generator import PromptGenerator
-from autofic_core.llm.llm_runner import LLMRunner
 from autofic_core.llm.response_parser import LLMResponseParser
 from autofic_core.patch.diff_generator import DiffGenerator
 
@@ -27,14 +27,26 @@ def main(repo, save_dir, sast, rule, semgrep_result):
 
 def run_cli(repo, save_dir, sast, rule, semgrep_result):
     """ GitHub 저장소 분석 """
-    click.echo(f"\n저장소 분석 시작: {repo}\n")
+    
+    handler = GitHubRepoHandler(repo_url=repo)
+    use_forked = False
+
+    if handler.needs_fork:
+        click.secho(f"\n저장소에 대한 Fork를 시도합니다...\n", fg="cyan")
+        handler.fork()
+        time.sleep(0.05)
+        click.secho(f"\n[ SUCCESS ] 저장소를 성공적으로 Fork 했습니다!\n", fg="green")
+    
+    repo_obj = handler.fetch_repo(use_forked=handler.needs_fork)
+    repo_url_for_display = repo_obj.html_url  
+    click.echo(f"\n저장소 분석 시작: {repo_url_for_display}\n")
+
     with create_progress() as progress:
         task = progress.add_task("[cyan]파일 탐색 중...", total=100)
         for _ in range(100):
             progress.update(task, advance=1)
-            time.sleep(0.05) 
-        repo_handler = GitHubRepoHandler(repo_url=repo)
-        files = repo_handler.get_repo_files()
+            time.sleep(0.05)  
+        files = GitHubFileCollector(repo=repo_obj).collect()
         progress.update(task, completed=100)
 
     if not files:
@@ -95,7 +107,6 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
         ''' processed 활용해서 이후 개발 '''
         vulnerable_snippets = [s for s in processed if s.message.strip()]
         prompts = PromptGenerator().generate_prompts(vulnerable_snippets)
-        LLMRunner.run(prompts)
 
         """ LLM 응답 파싱 및 diff 생성 """
         parsed_blocks = LLMResponseParser.load_and_parse("artifacts/llm/response_000.md")
