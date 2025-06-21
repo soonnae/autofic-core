@@ -9,6 +9,8 @@ from autofic_core.sast.semgrep import SemgrepRunner
 from autofic_core.sast.semgrep_preprocessor import SemgrepPreprocessor 
 from autofic_core.utils.progress_utils import create_progress
 from autofic_core.llm.prompt_generator import PromptGenerator
+from autofic_core.llm.llm_runner import LLMRunner, save_md_response
+
     
 load_dotenv()        
 @click.command()
@@ -94,6 +96,21 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
         ''' processed 활용해서 이후 개발 '''
         vulnerable_snippets = [s for s in processed if s.message.strip()]
         prompts = PromptGenerator().generate_prompts(vulnerable_snippets)
+        #generate_and_save_all(semgrep_result, save_dir)
 
+        llm = LLMRunner()
+        click.echo("\nGPT 응답 생성 및 저장 시작\n")
+        
+        with create_progress() as progress:
+            task = progress.add_task("[magenta]LLM 응답 중...", total=len(vulnerable_snippets))
+            
+            for p in prompts:
+                response = llm.run(p.prompt)
+                save_md_response(response, save_dir, p.snippet_idx)
+                progress.update(task, advance=1)
+                time.sleep(0.05)
+            progress.update(task, completed=100)
+
+        click.secho(f"\n[ SUCCESS ] GPT 응답이 .md 파일로 저장 완료되었습니다!\n", fg="green")
 if __name__ == '__main__':
     main()

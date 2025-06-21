@@ -3,7 +3,7 @@
     "results": [
         {
             "check_id": "javascript.sequelize.security.audit.sequelize-injection-express.express-sequelize-injection",
-            "path": "..\\artifacts\\downloaded_repo\\core\\appHandler.js",
+            "path": "artifacts/downloaded_repo/core/appHandler.js",
             "start": {
                 "line": 11,
                 "col": 21,
@@ -56,7 +56,7 @@
         },
         {
             "check_id": "javascript.express.security.audit.express-open-redirect.express-open-redirect",
-            "path": "..\\artifacts\\downloaded_repo\\core\\appHandler.js",
+            "path": "artifacts/downloaded_repo/core/appHandler.js",
             "start": {
                 "line": 188,
                 "col": 16,
@@ -105,7 +105,7 @@
         },
         {
             "check_id": "javascript.express.security.audit.express-third-party-object-deserialization.express-third-party-object-deserialization",
-            "path": "..\\artifacts\\downloaded_repo\\core\\appHandler.js",
+            "path": "artifacts/downloaded_repo/core/appHandler.js",
             "start": {
                 "line": 218,
                 "col": 18,
@@ -161,7 +161,7 @@
         },
         {
             "check_id": "javascript.express.security.audit.express-libxml-noent.express-libxml-noent",
-            "path": "..\\artifacts\\downloaded_repo\\core\\appHandler.js",
+            "path": "artifacts/downloaded_repo/core/appHandler.js",
             "start": {
                 "line": 235,
                 "col": 42,
@@ -214,7 +214,7 @@
         },
         {
             "check_id": "javascript.express.security.audit.express-cookie-settings.express-cookie-session-default-name",
-            "path": "..\\artifacts\\downloaded_repo\\server.js",
+            "path": "artifacts/downloaded_repo/server.js",
             "start": {
                 "line": 23,
                 "col": 9,
@@ -266,7 +266,7 @@
         },
         {
             "check_id": "javascript.express.security.audit.express-cookie-settings.express-cookie-session-no-domain",
-            "path": "..\\artifacts\\downloaded_repo\\server.js",
+            "path": "artifacts/downloaded_repo/server.js",
             "start": {
                 "line": 23,
                 "col": 9,
@@ -318,7 +318,7 @@
         },
         {
             "check_id": "javascript.express.security.audit.express-cookie-settings.express-cookie-session-no-expires",
-            "path": "..\\artifacts\\downloaded_repo\\server.js",
+            "path": "artifacts/downloaded_repo/server.js",
             "start": {
                 "line": 23,
                 "col": 9,
@@ -370,7 +370,7 @@
         },
         {
             "check_id": "javascript.express.security.audit.express-cookie-settings.express-cookie-session-no-httponly",
-            "path": "..\\artifacts\\downloaded_repo\\server.js",
+            "path": "artifacts/downloaded_repo/server.js",
             "start": {
                 "line": 23,
                 "col": 9,
@@ -422,7 +422,7 @@
         },
         {
             "check_id": "javascript.express.security.audit.express-cookie-settings.express-cookie-session-no-path",
-            "path": "..\\artifacts\\downloaded_repo\\server.js",
+            "path": "artifacts/downloaded_repo/server.js",
             "start": {
                 "line": 23,
                 "col": 9,
@@ -474,7 +474,7 @@
         },
         {
             "check_id": "javascript.express.security.audit.express-cookie-settings.express-cookie-session-no-secure",
-            "path": "..\\artifacts\\downloaded_repo\\server.js",
+            "path": "artifacts/downloaded_repo/server.js",
             "start": {
                 "line": 23,
                 "col": 9,
@@ -526,7 +526,7 @@
         },
         {
             "check_id": "javascript.express.security.audit.express-session-hardcoded-secret.express-session-hardcoded-secret",
-            "path": "..\\artifacts\\downloaded_repo\\server.js",
+            "path": "artifacts/downloaded_repo/server.js",
             "start": {
                 "line": 24,
                 "col": 3,
@@ -581,18 +581,18 @@
     "errors": [],
     "paths": {
         "scanned": [
-            "..\\artifacts\\downloaded_repo\\config\\db.js",
-            "..\\artifacts\\downloaded_repo\\config\\server.js",
-            "..\\artifacts\\downloaded_repo\\config\\vulns.js",
-            "..\\artifacts\\downloaded_repo\\core\\appHandler.js",
-            "..\\artifacts\\downloaded_repo\\core\\authHandler.js",
-            "..\\artifacts\\downloaded_repo\\core\\passport.js",
-            "..\\artifacts\\downloaded_repo\\models\\index.js",
-            "..\\artifacts\\downloaded_repo\\models\\product.js",
-            "..\\artifacts\\downloaded_repo\\models\\user.js",
-            "..\\artifacts\\downloaded_repo\\routes\\app.js",
-            "..\\artifacts\\downloaded_repo\\routes\\main.js",
-            "..\\artifacts\\downloaded_repo\\server.js"
+            "artifacts/downloaded_repo/config/db.js",
+            "artifacts/downloaded_repo/config/server.js",
+            "artifacts/downloaded_repo/config/vulns.js",
+            "artifacts/downloaded_repo/core/appHandler.js",
+            "artifacts/downloaded_repo/core/authHandler.js",
+            "artifacts/downloaded_repo/core/passport.js",
+            "artifacts/downloaded_repo/models/index.js",
+            "artifacts/downloaded_repo/models/product.js",
+            "artifacts/downloaded_repo/models/user.js",
+            "artifacts/downloaded_repo/routes/app.js",
+            "artifacts/downloaded_repo/routes/main.js",
+            "artifacts/downloaded_repo/server.js"
         ]
     },
     "skipped_rules": []

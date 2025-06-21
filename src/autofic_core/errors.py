@@ -52,3 +52,8 @@ class PromptGenerationException(AutoficError):
     def __init__(self, code: str, message: str):
         super().__init__(message)
         self.code = code
+
+class LLMExecutionError(Exception):
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(f"LLM 실행 오류: {message}")
