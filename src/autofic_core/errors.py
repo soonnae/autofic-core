@@ -13,8 +13,8 @@ class RepoURLFormatError(AutoficError):
         super().__init__(f"잘못된 GitHub URL 형식입니다 : {repo_url}")
 
 class RepoAccessError(AutoficError):
-    def __init__(self, repo_name):
-        super().__init__(f"저장소에 접근할 수 없습니다 : {repo_name}")
+    def __init__(self, message: str):
+        super().__init__(message)
 
 class ForkFailedError(RepoAccessError):
     def __init__(self, status_code, message):

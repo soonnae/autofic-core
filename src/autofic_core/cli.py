@@ -29,17 +29,19 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
     
     handler = GitHubRepoHandler(repo_url=repo)
     if handler.needs_fork:
-        click.secho(f"\n'저장소에 대한 Fork를 시도합니다...\n", fg="cyan")
+        click.secho(f"\n저장소에 대한 Fork를 시도합니다...\n", fg="cyan")
         handler.fork()
         click.secho(f"\n[ SUCCESS ] 저장소를 성공적으로 Fork 했습니다!\n", fg="green")
+    
+    repo_obj = handler.fetch_repo(use_forked=handler.needs_fork)
+    repo_url_for_display = repo_obj.html_url  
+    click.echo(f"\n저장소 분석 시작: {repo_url_for_display}\n")
 
-    click.echo(f"\n저장소 분석 시작: {repo}\n")
     with create_progress() as progress:
         task = progress.add_task("[cyan]파일 탐색 중...", total=100)
         for _ in range(100):
             progress.update(task, advance=1)
             time.sleep(0.05)  
-        repo_obj = handler.fetch_repo(use_forked=handler.needs_fork)
         files = GitHubFileCollector(repo=repo_obj).collect()
         progress.update(task, completed=100)
 
