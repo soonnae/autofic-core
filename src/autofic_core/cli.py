@@ -3,14 +3,13 @@ import json
 import time
 import os
 from dotenv import load_dotenv
-from autofic_core.download.github_handler import GitHubRepoHandler
-from autofic_core.download.downloader import FileDownloader
-from autofic_core.sast.semgrep import SemgrepRunner
-from autofic_core.sast.semgrep_preprocessor import SemgrepPreprocessor 
 from autofic_core.utils.progress_utils import create_progress
+from autofic_core.download.github_repo_handler import GitHubRepoHandler
+from autofic_core.download.github_file_collector import GitHubFileCollector
+from autofic_core.download.file_downloader import FileDownloader
+from autofic_core.sast.semgrep_runner import SemgrepRunner
+from autofic_core.sast.semgrep_preprocessor import SemgrepPreprocessor 
 from autofic_core.llm.prompt_generator import PromptGenerator
-from autofic_core.llm.llm_runner import LLMRunner
-from autofic_core.patch.diff_manager import DiffManager
 
 load_dotenv()
 
@@ -25,15 +24,23 @@ def main(repo, save_dir, sast, rule, semgrep_result):
     run_cli(repo, save_dir, sast, rule, semgrep_result)
 
 def run_cli(repo, save_dir, sast, rule, semgrep_result):
+    
     """ GitHub 저장소 분석 """
+    
+    handler = GitHubRepoHandler(repo_url=repo)
+    if handler.needs_fork:
+        click.secho(f"\n'저장소에 대한 Fork를 시도합니다...\n", fg="cyan")
+        handler.fork()
+        click.secho(f"\n[ SUCCESS ] 저장소를 성공적으로 Fork 했습니다!\n", fg="green")
+
     click.echo(f"\n저장소 분석 시작: {repo}\n")
     with create_progress() as progress:
         task = progress.add_task("[cyan]파일 탐색 중...", total=100)
         for _ in range(100):
             progress.update(task, advance=1)
-            time.sleep(0.05)  # 기존 속도 유지
-        repo_handler = GitHubRepoHandler(repo_url=repo)
-        files = repo_handler.get_repo_files()
+            time.sleep(0.05)  
+        repo_obj = handler.fetch_repo(use_forked=handler.needs_fork)
+        files = GitHubFileCollector(repo=repo_obj).collect()
         progress.update(task, completed=100)
 
     if not files:
@@ -42,6 +49,7 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
     click.secho(f"\n[ SUCCESS ] JS 파일 {len(files)}개를 찾았습니다!\n", fg="green")
 
     """ 파일 다운로드 """
+
     click.echo(f"다운로드 시작\n")
     results = []
     downloader = FileDownloader(save_dir=save_dir)
@@ -63,6 +71,7 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
             click.secho(f"[ ERROR ] {r.path} 다운로드 실패: {r.error}", fg="red")
 
     """ Semgrep 분석  """
+
     if sast:
         click.echo("\nSemgrep 분석 시작\n")
         with create_progress() as progress:
@@ -95,9 +104,5 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
         vulnerable_snippets = [s for s in processed if s.message.strip()]
         prompts = PromptGenerator().generate_prompts(vulnerable_snippets)
         
-        '''LLM 호출 및 응답 저장 및 diff 생성 및 저장'''
-        LLMRunner.run(prompts)
-        DiffManager.generate_from_llm_response()
-
 if __name__ == '__main__':
     main()
