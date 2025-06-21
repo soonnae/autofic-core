@@ -7,18 +7,17 @@ from urllib.parse import urlparse
 from pydantic import BaseModel, Field
 from autofic_core.errors import GitHubTokenMissingError, RepoAccessError, RepoURLFormatError, ForkFailedError
 
-class GitHubRepoHandler(BaseModel):
+class GitHubRepoHandler():
     """GitHub 저장소 URL과 토큰을 이용해 인증하고, 
     필요한 경우 Fork를 수행한 뒤, 저장소 객체를 반환하는 클래스"""
-    repo_url: str
-    token: str = Field(default_factory=lambda: os.getenv("GITHUB_TOKEN"))
-    
-    def __init__(self, **data):
-        super().__init__(**data)
+    def __init__(self, repo_url: str):
+        self.repo_url = repo_url
+        self.token = os.getenv("GITHUB_TOKEN")
         if not self.token:
             raise GitHubTokenMissingError()
+        
         self.github = Github(self.token)
-        self._owner, self._name = self._parse_repo_url(self.repo_url)
+        self._owner, self._name = self._parse_repo_url(repo_url)
         self._current_user = self.github.get_user().login
     
     @staticmethod

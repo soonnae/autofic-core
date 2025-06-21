@@ -1,7 +1,8 @@
 import os
 from pydantic import BaseModel, Field
 from typing import List
-from github.Repository import Repository
+from github.Repository import Repository 
+
 
 class RepoFile(BaseModel):
     """
@@ -10,15 +11,16 @@ class RepoFile(BaseModel):
     path: str
     download_url: str
 
-class GitHubFileCollector(BaseModel):
+class GitHubFileCollector():
     """
     GitHub Repository에서 지정한 확장자의 파일 목록을 수집하는 클래스
     """
-    repo: Repository
-    file_extensions: tuple = Field(
-        default_factory=lambda: tuple(
-            ext.strip() for ext in os.getenv("GITHUB_EXTENSIONS", "").split(",") if ext.strip()
-        )
+    def __init__(self, repo: Repository):
+        self.repo = repo
+        self.file_extensions: tuple = Field(
+            default_factory=lambda: tuple(
+                ext.strip() for ext in os.getenv("GITHUB_EXTENSIONS", "").split(",") if ext.strip()
+            )
     )
 
     def collect(self) -> List[RepoFile]:

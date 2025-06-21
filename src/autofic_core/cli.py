@@ -10,8 +10,6 @@ from autofic_core.download.file_downloader import FileDownloader
 from autofic_core.sast.semgrep_runner import SemgrepRunner
 from autofic_core.sast.semgrep_preprocessor import SemgrepPreprocessor 
 from autofic_core.llm.prompt_generator import PromptGenerator
-from autofic_core.llm.llm_runner import LLMRunner
-from autofic_core.patch.diff_manager import DiffManager
 
 load_dotenv()
 
@@ -106,9 +104,5 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
         vulnerable_snippets = [s for s in processed if s.message.strip()]
         prompts = PromptGenerator().generate_prompts(vulnerable_snippets)
         
-        '''LLM 호출 및 응답 저장 및 diff 생성 및 저장'''
-        LLMRunner.run(prompts)
-        DiffManager.generate_from_llm_response()
-
 if __name__ == '__main__':
     main()
