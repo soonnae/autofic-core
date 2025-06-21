@@ -2,6 +2,7 @@ import re
 from typing import List, Optional, Union
 from pydantic import BaseModel
 from pathlib import Path
+from autofic_core.errors import AutoficError  
 
 class ParsedCodeBlock(BaseModel):
     language: str
@@ -16,11 +17,10 @@ class LLMResponseParser:
 
         code_blocks = []
         for language, code in matches:
-            if language.lower() in ["js", "javascript"]:
-                filename = LLMResponseParser.extract_filename(code)
-                code_blocks.append(
-                    ParsedCodeBlock(language=language, code=code.strip(), filename=filename)
-                )
+            filename = LLMResponseParser.extract_filename(code)
+            code_blocks.append(
+                ParsedCodeBlock(language=language, code=code.strip(), filename=filename)
+            )
         return code_blocks
 
     @staticmethod
@@ -35,4 +35,4 @@ class LLMResponseParser:
             content = Path(path).read_text(encoding="utf-8")
             return LLMResponseParser.extract_code_blocks(content)
         except Exception as e:
-            raise RuntimeError(f"[LLM 응답 파일 로딩 실패] {path}: {e}")
+            raise AutoficError(f"[LLM 응답 파일 로딩 실패] {path}: {e}")

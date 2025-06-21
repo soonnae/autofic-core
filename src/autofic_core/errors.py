@@ -52,3 +52,12 @@ class PromptGenerationException(AutoficError):
     def __init__(self, code: str, message: str):
         super().__init__(message)
         self.code = code
+
+# diff_generator.py
+
+class DiffGenerationError(AutoficError):
+    def __init__(self, filename: str, reason: str):
+        message = f"[diff 생성 실패] 파일: {filename} - 이유: {reason}"
+        super().__init__(message)
+        self.filename = filename
+        self.reason = reason

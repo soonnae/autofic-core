@@ -10,7 +10,8 @@ from autofic_core.sast.semgrep_preprocessor import SemgrepPreprocessor
 from autofic_core.utils.progress_utils import create_progress
 from autofic_core.llm.prompt_generator import PromptGenerator
 from autofic_core.llm.llm_runner import LLMRunner
-from autofic_core.patch.diff_manager import DiffManager
+from autofic_core.llm.response_parser import LLMResponseParser
+from autofic_core.patch.diff_generator import DiffGenerator
 
 load_dotenv()
 
@@ -31,7 +32,7 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
         task = progress.add_task("[cyan]파일 탐색 중...", total=100)
         for _ in range(100):
             progress.update(task, advance=1)
-            time.sleep(0.05)  # 기존 속도 유지
+            time.sleep(0.05) 
         repo_handler = GitHubRepoHandler(repo_url=repo)
         files = repo_handler.get_repo_files()
         progress.update(task, completed=100)
@@ -94,10 +95,19 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
         ''' processed 활용해서 이후 개발 '''
         vulnerable_snippets = [s for s in processed if s.message.strip()]
         prompts = PromptGenerator().generate_prompts(vulnerable_snippets)
-        
-        '''LLM 호출 및 응답 저장 및 diff 생성 및 저장'''
         LLMRunner.run(prompts)
-        DiffManager.generate_from_llm_response()
+
+        """ LLM 응답 파싱 및 diff 생성 """
+        parsed_blocks = LLMResponseParser.load_and_parse("artifacts/llm/response_000.md")
+        diff_generator = DiffGenerator()
+        results = diff_generator.generate_from_blocks(parsed_blocks)
+
+        click.echo()
+        for r in results:
+            if r.success:
+                click.secho(f"[DIFF SUCCESS] {r.filename} → 저장 완료", fg="green")
+            else:
+                click.secho(f"[DIFF FAIL] {r.filename} → {r.error}", fg="red")
 
 if __name__ == '__main__':
     main()
