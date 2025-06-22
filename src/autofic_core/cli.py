@@ -102,7 +102,7 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
             task = progress.add_task("[magenta]LLM 응답 중...", total=len(vulnerable_snippets))
             for p in prompts:
                 response = llm.run(p.prompt)
-                save_md_response(response, save_dir, p.snippet_idx)
+                save_md_response(response, p.snippet_idx)
                 progress.update(task, advance=1)
                 time.sleep(0.05)
             progress.update(task, completed=100)

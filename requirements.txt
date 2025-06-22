@@ -26,3 +26,4 @@ wrapt==1.17.2
 semgrep==1.122.0     
 pydantic==2.11.6
 pydantic_core==2.33.2
+openai==1.88.0
