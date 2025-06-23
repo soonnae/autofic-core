@@ -15,6 +15,7 @@ class SemgrepSnippet(BaseModel):
     cwe: list = Field(default_factory=list)
     severity: str
     references: list = Field(default_factory=list)
+    path: str 
 
 class SemgrepPreprocessor(BaseModel):
 
@@ -68,7 +69,8 @@ class SemgrepPreprocessor(BaseModel):
                 vulnerability_class=meta.get("vulnerability_class", []),
                 cwe=meta.get("cwe", []),
                 severity=extra.get("severity", ""),
-                references=meta.get("references", [])
+                references=meta.get("references", []),
+                path=rel_path
             ))
 
         return processed

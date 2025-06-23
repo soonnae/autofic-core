@@ -1,10 +1,10 @@
-# src/autofic_core/llm/llm_runner.py
 import os
+import click
+from pathlib import Path
 from openai import OpenAI
 from dotenv import load_dotenv
 from autofic_core.errors import LLMExecutionError
-from pathlib import Path
-import click
+from autofic_core.sast.semgrep_preprocessor import SemgrepSnippet
 
 load_dotenv()
 
@@ -28,10 +28,24 @@ class LLMRunner:
             click.echo(f"[LLM ERROR] 모델 요청 실패 - {e}")
             raise LLMExecutionError(str(e))
         
-def save_md_response(content: str, idx: int):
+def save_md_response(content: str, snippet: SemgrepSnippet):
     output_dir = Path("artifacts/llm")
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / f"response_{idx:03}.md"
+
+    path = Path(snippet.path)
+    parts = path.parts
+
+    while parts and parts[0] in ("artifacts", "downloaded_repo"):
+        parts = parts[1:]
+
+    flat_path = "_".join(parts)
+    base_name = f"response_{flat_path}_{snippet.start_line}"
+    output_path = output_dir / f"{base_name}.md"
+
+    counter = 2
+    while output_path.exists():
+        output_path = output_dir / f"{base_name}_{counter}.md"
+        counter += 1
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(content)

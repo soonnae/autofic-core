@@ -37,7 +37,7 @@ class PromptTemplate(BaseModel):
 class GeneratedPrompt(BaseModel):
     title: str
     prompt: str
-    snippet_idx: int
+    snippet: SemgrepSnippet
 
 class PromptGenerator:
     def __init__(self):
@@ -71,7 +71,7 @@ class PromptGenerator:
     def generate_prompt(self, snippet: SemgrepSnippet) -> GeneratedPrompt:
         rendered_prompt = self.template.render(snippet)
         return GeneratedPrompt (
-            title=self.template.title, prompt=rendered_prompt, snippet_idx=snippet.idx
+            title=self.template.title, prompt=rendered_prompt, snippet=snippet
         )
         
 

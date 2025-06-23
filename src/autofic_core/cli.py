@@ -3,6 +3,7 @@ import json
 import time
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 from autofic_core.utils.progress_utils import create_progress
 from autofic_core.download.github_repo_handler import GitHubRepoHandler
 from autofic_core.download.github_file_collector import GitHubFileCollector
@@ -117,16 +118,21 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
             task = progress.add_task("[magenta]LLM 응답 중...", total=len(vulnerable_snippets))
             for p in prompts:
                 response = llm.run(p.prompt)
-                save_md_response(response, p.snippet_idx)
+                save_md_response(response, p.snippet)
                 progress.update(task, advance=1)
                 time.sleep(0.05)
             progress.update(task, completed=100)
 
         click.secho(f"\n[ SUCCESS ] GPT 응답이 .md 파일로 저장 완료되었습니다!\n", fg="green")
         
-
         """ LLM 응답 파싱 및 diff 생성 """
-        parsed_blocks = LLMResponseParser.load_and_parse("artifacts/llm/response_000.md")
+        llm_response_dir = Path("artifacts/llm")
+        md_files = sorted(llm_response_dir.glob("response_*.md"))
+
+        parsed_blocks = []
+        for path in md_files:
+            parsed_blocks.extend(LLMResponseParser.load_and_parse(path))
+        
         diff_generator = DiffGenerator()
         results = diff_generator.generate_from_blocks(parsed_blocks)
 
