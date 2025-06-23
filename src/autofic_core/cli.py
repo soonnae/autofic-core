@@ -6,8 +6,6 @@ from dotenv import load_dotenv
 from pathlib import Path
 from autofic_core.utils.progress_utils import create_progress
 from autofic_core.download.github_repo_handler import GitHubRepoHandler
-from autofic_core.download.github_file_collector import GitHubFileCollector
-from autofic_core.download.file_downloader import FileDownloader
 from autofic_core.sast.semgrep_runner import SemgrepRunner
 from autofic_core.sast.semgrep_preprocessor import SemgrepPreprocessor 
 from autofic_core.llm.prompt_generator import PromptGenerator
@@ -28,10 +26,10 @@ def main(repo, save_dir, sast, rule, semgrep_result):
     run_cli(repo, save_dir, sast, rule, semgrep_result)
 
 def run_cli(repo, save_dir, sast, rule, semgrep_result):
-    """ GitHub 저장소 분석 """
+    
+    """ GitHub 저장소 fork 및 클론 """
     
     handler = GitHubRepoHandler(repo_url=repo)
-    use_forked = False
 
     if handler.needs_fork:
         click.secho(f"\n저장소에 대한 Fork를 시도합니다...\n", fg="cyan")
@@ -39,45 +37,11 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
         time.sleep(0.05)
         click.secho(f"\n[ SUCCESS ] 저장소를 성공적으로 Fork 했습니다!\n", fg="green")
     
-    repo_obj = handler.fetch_repo(use_forked=handler.needs_fork)
-    repo_url_for_display = repo_obj.html_url  
-    click.echo(f"\n저장소 분석 시작: {repo_url_for_display}\n")
-
-    with create_progress() as progress:
-        task = progress.add_task("[cyan]파일 탐색 중...", total=100)
-        for _ in range(100):
-            progress.update(task, advance=1)
-            time.sleep(0.05)  
-        files = GitHubFileCollector(repo=repo_obj).collect()
-        progress.update(task, completed=100)
-
-    if not files:
-        click.secho("\n[ WARNING ] JS 파일을 찾지 못했습니다. 저장소 또는 GitHub 연결을 확인하세요.\n", fg="yellow")
-        return 
-    click.secho(f"\n[ SUCCESS ] JS 파일 {len(files)}개를 찾았습니다!\n", fg="green")
-
-    """ 파일 다운로드 """
-    click.echo(f"다운로드 시작\n")
-    results = []
-    downloader = FileDownloader(save_dir=save_dir)
-    with create_progress() as progress:
-        task = progress.add_task("[cyan]파일 다운로드 중...", total=len(files))
-        for file in files:
-            result = downloader.download_file(file)
-            results.append(result)
-            progress.update(task, advance=1)
-            time.sleep(0.05)  
-        progress.update(task, completed=100)
-    click.echo()
-    for r in results:
-        if r.status == "success":
-            click.secho(f"[ SUCCESS ] {r.path} 다운로드 완료", fg="green")
-        elif r.status == "skipped":
-            click.secho(f"[ WARNING ] {r.path} 이미 존재함 - 건너뜀", fg="yellow")
-        else:
-            click.secho(f"[ ERROR ] {r.path} 다운로드 실패: {r.error}", fg="red")
+    clone_path = handler.clone_repo(save_dir=save_dir, use_forked=handler.needs_fork)
+    click.secho(f"\n[ SUCCESS ] 저장소를 {clone_path}에 클론했습니다!\n", fg="green")
 
     """ Semgrep 분석  """
+
     if sast:
         click.echo("\nSemgrep 분석 시작\n")
         with create_progress() as progress:

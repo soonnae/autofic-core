@@ -1,5 +1,7 @@
 import os
 import requests 
+import subprocess
+import shutil
 from github import Github
 from github.Repository import Repository
 from urllib.parse import urlparse
@@ -54,3 +56,12 @@ class GitHubRepoHandler():
             return True
         else:
             raise ForkFailedError(response.status_code, response.text)
+    
+    # 지정된 경로에 저장소 클론. fork 여부에 따라 다른 저장소 URL 사용.
+    def clone_repo(self, save_dir: str, use_forked: bool = False) -> str:
+        if os.path.exists(save_dir):
+            shutil.rmtree(save_dir)
+        owner = self._current_user if use_forked else self._owner
+        clone_url = f"https://github.com/{owner}/{self._name}.git"
+        subprocess.run(['git', 'clone', clone_url, save_dir], check=True)
+        return save_dir
