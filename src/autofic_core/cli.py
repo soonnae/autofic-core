@@ -10,10 +10,11 @@ from autofic_core.download.file_downloader import FileDownloader
 from autofic_core.sast.semgrep_runner import SemgrepRunner
 from autofic_core.sast.semgrep_preprocessor import SemgrepPreprocessor 
 from autofic_core.llm.prompt_generator import PromptGenerator
+from autofic_core.llm.llm_runner import LLMRunner, save_md_response
 from autofic_core.llm.response_parser import LLMResponseParser
 from autofic_core.patch.diff_generator import DiffGenerator
 
-load_dotenv()
+load_dotenv()        
 
 @click.command()
 @click.option('--repo', help='GitHub repository URL')
@@ -107,6 +108,22 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
         ''' processed 활용해서 이후 개발 '''
         vulnerable_snippets = [s for s in processed if s.message.strip()]
         prompts = PromptGenerator().generate_prompts(vulnerable_snippets)
+
+        '''LLM 호출 및 응답 저장 및 diff 생성 및 저장'''
+        llm = LLMRunner()
+        click.echo("\nGPT 응답 생성 및 저장 시작\n")
+        
+        with create_progress() as progress:
+            task = progress.add_task("[magenta]LLM 응답 중...", total=len(vulnerable_snippets))
+            for p in prompts:
+                response = llm.run(p.prompt)
+                save_md_response(response, p.snippet_idx)
+                progress.update(task, advance=1)
+                time.sleep(0.05)
+            progress.update(task, completed=100)
+
+        click.secho(f"\n[ SUCCESS ] GPT 응답이 .md 파일로 저장 완료되었습니다!\n", fg="green")
+        
 
         """ LLM 응답 파싱 및 diff 생성 """
         parsed_blocks = LLMResponseParser.load_and_parse("artifacts/llm/response_000.md")
