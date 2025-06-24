@@ -20,13 +20,12 @@ load_dotenv()
 @click.option('--save-dir', default=os.getenv("DOWNLOAD_SAVE_DIR"), help="저장할 디렉토리 경로")
 @click.option('--sast', is_flag=True, help='SAST 분석 수행 여부')
 @click.option('--rule', default=os.getenv("SEMGREP_RULE"), help='Semgrep 규칙')
-@click.option('--semgrep-result', default=os.getenv("SEMGREP_RESULT_PATH"), help="Semgrep 원본 결과 경로")
 
-def main(repo, save_dir, sast, rule, semgrep_result):
-    run_cli(repo, save_dir, sast, rule, semgrep_result)
+def main(repo, save_dir, sast, rule):
+    run_cli(repo, save_dir, sast, rule)
 
-def run_cli(repo, save_dir, sast, rule, semgrep_result):
-    
+def run_cli(repo, save_dir, sast, rule):
+    save_dir = Path(save_dir).expanduser().resolve()
     """ GitHub 저장소 fork 및 클론 """
     
     handler = GitHubRepoHandler(repo_url=repo)
@@ -37,7 +36,7 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
         time.sleep(0.05)
         click.secho(f"\n[ SUCCESS ] 저장소를 성공적으로 Fork 했습니다!\n", fg="green")
     
-    clone_path = handler.clone_repo(save_dir=save_dir, use_forked=handler.needs_fork)
+    clone_path = handler.clone_repo(save_dir=str(save_dir), use_forked=handler.needs_fork)
     click.secho(f"\n[ SUCCESS ] 저장소를 {clone_path}에 클론했습니다!\n", fg="green")
 
     """ Semgrep 분석  """
@@ -49,7 +48,8 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
             for _ in range(100):
                 progress.update(task, advance=1)
                 time.sleep(0.05)  
-            semgrep_runner = SemgrepRunner(repo_path=save_dir, rule=rule)
+            
+            semgrep_runner = SemgrepRunner(repo_path=clone_path, rule=rule)
             semgrep_result_obj = semgrep_runner.run_semgrep()
             progress.update(task, completed=100)
 
@@ -65,47 +65,45 @@ def run_cli(repo, save_dir, sast, rule, semgrep_result):
                 click.echo(semgrep_result_obj.stderr or semgrep_result_obj.stdout)
             return
 
-        SemgrepPreprocessor.save_json_file(json.loads(semgrep_result_obj.stdout), semgrep_result)
-        click.secho(f"\n[ SUCCESS ] Semgrep 분석 완료! 결과가 '{semgrep_result}'에 저장되었습니다.\n", fg="green")
-
-        processed = SemgrepPreprocessor.preprocess(semgrep_result)
-
-        ''' processed 활용해서 이후 개발 '''
-        vulnerable_snippets = [s for s in processed if s.message.strip()]
-        prompts = PromptGenerator().generate_prompts(vulnerable_snippets)
-
-        '''LLM 호출 및 응답 저장 및 diff 생성 및 저장'''
-        llm = LLMRunner()
-        click.echo("\nGPT 응답 생성 및 저장 시작\n")
+        sast_dir = save_dir / "sast"
+        sast_dir.mkdir(parents=True, exist_ok=True)
         
+        semgrep_result_path = sast_dir / "before.json"
+        
+        SemgrepPreprocessor.save_json_file (
+            json.loads(semgrep_result_obj.stdout),
+            semgrep_result_path
+        )
+        
+        click.secho(f"\n[ SUCCESS ] Semgrep 분석 완료! 결과가 '{semgrep_result_path}'에 저장되었습니다.\n", fg="green")
+
+        processed = SemgrepPreprocessor.preprocess (
+            input_json_path=semgrep_result_path,
+            base_dir=clone_path
+        )
+        
+        '''프롬프트 호출'''
+        prompts = PromptGenerator().from_semgrep_file (
+            semgrep_result_path,
+            base_dir=clone_path
+        )
+        
+        '''LLM 호출 및 응답 저장'''
+        llm = LLMRunner()
+        llm_output_dir = save_dir / "llm"
+        click.echo("\nGPT 응답 생성 및 저장 시작\n")
+
         with create_progress() as progress:
-            task = progress.add_task("[magenta]LLM 응답 중...", total=len(vulnerable_snippets))
+            task = progress.add_task("[magenta]LLM 응답 중...", total=len(prompts))
             for p in prompts:
                 response = llm.run(p.prompt)
-                save_md_response(response, p.snippet)
+                save_md_response(response, p.snippet, output_dir=llm_output_dir)
                 progress.update(task, advance=1)
+                
                 time.sleep(0.05)
             progress.update(task, completed=100)
 
         click.secho(f"\n[ SUCCESS ] GPT 응답이 .md 파일로 저장 완료되었습니다!\n", fg="green")
         
-        """ LLM 응답 파싱 및 diff 생성 """
-        llm_response_dir = Path("artifacts/llm")
-        md_files = sorted(llm_response_dir.glob("response_*.md"))
-
-        parsed_blocks = []
-        for path in md_files:
-            parsed_blocks.extend(LLMResponseParser.load_and_parse(path))
-        
-        diff_generator = DiffGenerator()
-        results = diff_generator.generate_from_blocks(parsed_blocks)
-
-        click.echo()
-        for r in results:
-            if r.success:
-                click.secho(f"[DIFF SUCCESS] {r.filename} → 저장 완료", fg="green")
-            else:
-                click.secho(f"[DIFF FAIL] {r.filename} → {r.error}", fg="red")
-
 if __name__ == '__main__':
     main()
