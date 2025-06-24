@@ -59,9 +59,17 @@ class GitHubRepoHandler():
     
     # 지정된 경로에 저장소 클론. fork 여부에 따라 다른 저장소 URL 사용.
     def clone_repo(self, save_dir: str, use_forked: bool = False) -> str:
-        if os.path.exists(save_dir):
-            shutil.rmtree(save_dir)
+        save_dir = os.path.abspath(save_dir)            # 사용자 지정 루트 디렉토리
+        repo_path = os.path.join(save_dir, "repo")      # repo 하위 폴더 지정
+    
+        # 기존 repo 디렉토리가 있다면 삭제
+        if os.path.exists(repo_path):
+            if os.path.isdir(repo_path):
+                shutil.rmtree(repo_path)
+            else:
+                raise ValueError(f"지정한 경로가 디렉토리가 아닙니다 : {repo_path}")
+
         owner = self._current_user if use_forked else self._owner
         clone_url = f"https://github.com/{owner}/{self._name}.git"
-        subprocess.run(['git', 'clone', clone_url, save_dir], check=True)
-        return save_dir
+        subprocess.run(['git', 'clone', clone_url, repo_path], check=True)
+        return repo_path
