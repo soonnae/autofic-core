@@ -83,6 +83,6 @@ class PromptGenerator:
             )
         return [self.generate_prompt(snippet) for snippet in snippets]
 
-    def from_semgrep_file(self, semgrep_result_path: str) -> List[GeneratedPrompt]:
-        snippets = SemgrepPreprocessor().preprocess(semgrep_result_path)
+    def from_semgrep_file(self, semgrep_result_path: str, base_dir: str = ".") -> List[GeneratedPrompt]:
+        snippets = SemgrepPreprocessor().preprocess(semgrep_result_path, base_dir=base_dir)
         return self.generate_prompts(snippets)
