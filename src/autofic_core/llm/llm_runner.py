@@ -28,13 +28,13 @@ class LLMRunner:
             click.echo(f"[LLM ERROR] 모델 요청 실패 - {e}")
             raise LLMExecutionError(str(e))
         
-def save_md_response(content: str, snippet: SemgrepSnippet):
-    output_dir = Path("artifacts/llm")
+def save_md_response(content: str, snippet: SemgrepSnippet, output_dir: Path) -> str:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     path = Path(snippet.path)
     parts = path.parts
 
+    # "artifacts", "downloaded_repo" 등 제거
     while parts and parts[0] in ("artifacts", "downloaded_repo"):
         parts = parts[1:]
 
@@ -49,4 +49,5 @@ def save_md_response(content: str, snippet: SemgrepSnippet):
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(content)
+
     return str(output_path)
