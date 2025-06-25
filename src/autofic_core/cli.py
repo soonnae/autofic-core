@@ -7,7 +7,8 @@ from pathlib import Path
 from autofic_core.utils.progress_utils import create_progress
 from autofic_core.download.github_repo_handler import GitHubRepoHandler
 from autofic_core.sast.semgrep_runner import SemgrepRunner
-from autofic_core.sast.semgrep_preprocessor import SemgrepPreprocessor 
+from autofic_core.sast.semgrep_preprocessor import SemgrepPreprocessor
+from autofic_core.sast.semgrep_merger import merge_snippets_by_location
 from autofic_core.llm.prompt_generator import PromptGenerator
 from autofic_core.llm.llm_runner import LLMRunner, save_md_response
 from autofic_core.llm.response_parser import LLMResponseParser
@@ -82,11 +83,11 @@ def run_cli(repo, save_dir, sast, rule):
             base_dir=clone_path
         )
         
+        merged = merge_snippets_by_location(processed)
+        
         '''프롬프트 호출'''
-        prompts = PromptGenerator().from_semgrep_file (
-            semgrep_result_path,
-            base_dir=clone_path
-        )
+        prompts_generator = PromptGenerator()
+        prompts = prompts_generator.generate_prompts(merged)
         
         '''LLM 호출 및 응답 저장'''
         llm = LLMRunner()
