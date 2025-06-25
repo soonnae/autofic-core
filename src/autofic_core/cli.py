@@ -13,6 +13,7 @@ from autofic_core.llm.prompt_generator import PromptGenerator
 from autofic_core.llm.llm_runner import LLMRunner, save_md_response
 from autofic_core.llm.response_parser import LLMResponseParser
 from autofic_core.patch.diff_generator import DiffGenerator
+from autofic_core.patch.pr_auto import BranchPRAutomation
 
 load_dotenv()        
 
@@ -24,6 +25,7 @@ load_dotenv()
 
 def main(repo, save_dir, sast, rule):
     run_cli(repo, save_dir, sast, rule)
+    BranchPRAutomation(repo).run()
 
 def run_cli(repo, save_dir, sast, rule):
     save_dir = Path(save_dir).expanduser().resolve()
