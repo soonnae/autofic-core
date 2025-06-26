@@ -44,7 +44,7 @@ class VulnerabilityReport(BaseModel):
 
 # GitHub PR 자동화 클래스
 class BranchPRAutomation:
-    def __init__(self, repo_url: str):
+    def __init__(self, repo_url: str, save_dir: str):
         # .env 파일에서 환경 변수 로드
         self.token = os.getenv('GITHUB_TOKEN')
         self.user_name = os.getenv('USER_NAME')
@@ -52,6 +52,7 @@ class BranchPRAutomation:
         self.discord_webhook = os.environ.get('DISCORD_WEBHOOK_URL')
         # repo_url은 GitHub 저장소 URL이어야 함
         self.repo_url = repo_url.rstrip('/').rstrip('.git')
+        self.save_dir = save_dir + '/repo'
         # 기본 브랜치는 main으로 설정
         self.base_branch = 'main'
         # Discord, Slack을 Github랑 연결하려면, 아래 변수를 추가해야함
@@ -73,7 +74,7 @@ class BranchPRAutomation:
 
     def run(self):
         # 0. clone한 디렉토리로 이동
-        os.chdir('./downloaded_folder/repo')
+        os.chdir(save_dir)
         # 1. 브랜치 생성
         branch_name = 'WHS_VULN_DETEC'
         subprocess.run(['git', 'checkout', '-b', branch_name], check=True)
