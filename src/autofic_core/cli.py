@@ -14,6 +14,7 @@ from autofic_core.llm.llm_runner import LLMRunner, save_md_response
 from autofic_core.llm.response_parser import ResponseParser
 from autofic_core.patch.diff_generator import DiffGenerator
 from autofic_core.patch.diff_merger import DiffMerger
+from autofic_core.patch.pr_auto import BranchPRAutomation
 
 load_dotenv()
 
@@ -24,6 +25,7 @@ load_dotenv()
 @click.option('--rule', default=os.getenv("SEMGREP_RULE"), help='Semgrep 규칙')
 def main(repo, save_dir, sast, rule):
     run_cli(repo, save_dir, sast, rule)
+    BranchPRAutomation(repo, save_dir).run()
 
 def run_cli(repo, save_dir, sast, rule):
     save_dir = Path(save_dir).expanduser().resolve()
@@ -34,7 +36,7 @@ def run_cli(repo, save_dir, sast, rule):
         handler.fork()
         time.sleep(2)
         click.secho(f"\n[ SUCCESS ] 저장소를 성공적으로 Fork 했습니다!\n", fg="green")
-
+    time.sleep(3)
     clone_path = handler.clone_repo(save_dir=str(save_dir), use_forked=handler.needs_fork)
     click.secho(f"\n[ SUCCESS ] 저장소를 {clone_path}에 클론했습니다!\n", fg="green")
 
