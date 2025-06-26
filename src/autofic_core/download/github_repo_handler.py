@@ -19,6 +19,8 @@ class GitHubRepoHandler():
         self.github = Github(self.token)
         self._owner, self._name = self._parse_repo_url(repo_url)
         self._current_user = self.github.get_user().login
+
+        self.needs_fork = self._owner != self._current_user     # 포크 필요 여부 판단
     
     @staticmethod
     # URL에서 owner와 name 추출
