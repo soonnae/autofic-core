@@ -74,7 +74,7 @@ class BranchPRAutomation:
 
     def run(self):
         # 0. clone한 디렉토리로 이동
-        os.chdir(save_dir)
+        os.chdir(self.save_dir)
         # 1. 브랜치 생성
         branch_name = 'WHS_VULN_DETEC'
         subprocess.run(['git', 'checkout', '-b', branch_name], check=True)
