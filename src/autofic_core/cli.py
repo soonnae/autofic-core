@@ -32,7 +32,7 @@ def run_cli(repo, save_dir, sast, rule):
     if handler.needs_fork:
         click.secho(f"\n저장소에 대한 Fork를 시도합니다...\n", fg="cyan")
         handler.fork()
-        time.sleep(0.05)
+        time.sleep(2)
         click.secho(f"\n[ SUCCESS ] 저장소를 성공적으로 Fork 했습니다!\n", fg="green")
 
     clone_path = handler.clone_repo(save_dir=str(save_dir), use_forked=handler.needs_fork)
