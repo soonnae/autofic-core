@@ -25,7 +25,7 @@ load_dotenv()
 
 def main(repo, save_dir, sast, rule):
     run_cli(repo, save_dir, sast, rule)
-    BranchPRAutomation(repo).run()
+    BranchPRAutomation(repo, save_dir).run()
 
 def run_cli(repo, save_dir, sast, rule):
     save_dir = Path(save_dir).expanduser().resolve()
