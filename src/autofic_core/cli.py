@@ -2,6 +2,8 @@ import click
 import json
 import time
 import os
+from pyfiglet import Figlet
+from rich.console import Console
 from dotenv import load_dotenv
 from pathlib import Path
 from autofic_core.utils.progress_utils import create_progress
@@ -14,8 +16,41 @@ from autofic_core.llm.llm_runner import LLMRunner, save_md_response
 from autofic_core.llm.response_parser import LLMResponseParser
 from autofic_core.patch.diff_generator import DiffGenerator
 
-load_dotenv()        
+load_dotenv()    
 
+console = Console()
+
+f = Figlet(font="slant")
+ascii_art = f.renderText("AutoFiC")
+
+console.print(f"[magenta]{ascii_art}[/magenta]")
+
+def print_divider(title) :
+    console.print(f"\n[bold magenta]{'-'*20} [ {title} ] {'-'*20}[/bold magenta]\n")
+
+def print_summary(
+    repo_url: str,
+    detected_issues_count: int,
+    output_dir: str,
+    #pr_status: str,
+    response_files: list   
+):
+
+    print_divider("AutoFiC 작업 요약")
+
+    console.print(f"✔️ [bold]분석 대상 저장소:[/bold] {repo_url}")
+    console.print(f"✔️ [bold]취약점이 탐지된 파일:[/bold] {detected_issues_count} 개")
+    if response_files:
+        first_file = Path(response_files[0]).name
+        last_file = Path(response_files[-1]).name
+        console.print(f"✔️ [bold]저장된 응답 파일:[/bold] {first_file} ~ {last_file}")
+    else:
+        console.print(f"✔️ [bold]저장된 응답 파일:[/bold] 없음")
+
+    #console.print(f"✔️ [bold]PR 여부:[/bold] {pr_status}")
+
+    console.print(f"\n[bold magenta]{'━'*64}[/bold magenta]\n")
+    
 @click.command()
 @click.option('--repo', help='GitHub repository URL')
 @click.option('--save-dir', default=os.getenv("DOWNLOAD_SAVE_DIR"), help="저장할 디렉토리 경로")
@@ -26,9 +61,12 @@ def main(repo, save_dir, sast, rule):
     run_cli(repo, save_dir, sast, rule)
 
 def run_cli(repo, save_dir, sast, rule):
+
     save_dir = Path(save_dir).expanduser().resolve()
     """ GitHub 저장소 fork 및 클론 """
     
+    print_divider("저장소 다운로드 단계")
+
     handler = GitHubRepoHandler(repo_url=repo)
 
     if handler.needs_fork:
@@ -41,6 +79,8 @@ def run_cli(repo, save_dir, sast, rule):
     click.secho(f"\n[ SUCCESS ] 저장소를 {clone_path}에 클론했습니다!\n", fg="green")
 
     """ Semgrep 분석  """
+
+    print_divider("SAST 분석 단계")
 
     if sast:
         click.echo("\nSemgrep 분석 시작\n")
@@ -90,6 +130,9 @@ def run_cli(repo, save_dir, sast, rule):
         prompts = prompts_generator.generate_prompts(merged)
         
         '''LLM 호출 및 응답 저장'''
+
+        print_divider("LLM 응답 생성 단계")
+
         llm = LLMRunner()
         llm_output_dir = save_dir / "llm"
         click.echo("\nGPT 응답 생성 및 저장 시작\n")
@@ -105,6 +148,16 @@ def run_cli(repo, save_dir, sast, rule):
             progress.update(task, completed=100)
 
         click.secho(f"\n[ SUCCESS ] GPT 응답이 .md 파일로 저장 완료되었습니다!\n", fg="green")
+
+        response_files = sorted([f.name for f in llm_output_dir.glob("response_*.md")])
+
+        print_summary(
+        repo_url=repo,
+        detected_issues_count=len(merged),
+        output_dir=str(llm_output_dir),
+        #pr_status="생성 완료",
+        response_files=response_files
+)
         
 if __name__ == '__main__':
     main()
