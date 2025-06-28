@@ -1,0 +1,27 @@
+name: Autofic SAST for Top 5 JS Repos
+
+on:
+  schedule:
+    - cron: '5 12 * * *'  # 매일 KST 21:05 (UTC+9 → UTC 12:05)
+  workflow_dispatch:
+
+jobs:
+  find-and-run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout this repository (not strictly needed)
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install requests
+
+      - name: Find Top 5 JS Repos and Run Autofic
+        run: |
+          python find_js_repos_and_run.py
