@@ -20,7 +20,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip intall --upgrade pip; pip install -r requirements.txt; pip install -e .
+          pip install --upgrade pip; pip install -r requirements.txt; pip install -e .
 
       - name: Find Top 5 JS Repos and Run Autofic
         run: |
