@@ -25,7 +25,11 @@ def run_autofic(repo):
         '--rule', 'p/javascript'
     ]
     print("Running:", " ".join(cmd))
-    subprocess.run(cmd, check=True)
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    print("STDOUT:", result.stdout)
+    print("STDERR:", result.stderr)
+    if result.returncode != 0:
+        print(f"Error running autofic on {repo_url} (exit code {result.returncode})")
 
 def main():
     repos = get_recent_js_repos(2)
