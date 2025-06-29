@@ -100,7 +100,7 @@ class BranchPRAutomation:
         subprocess.run(['git', 'push', 'origin', branch_name], check=True)
     
         # 파일 생성 (임시) -> 원래는 수정된 파일(.js)가 들어가야함
-        workflow_filename = 'test.txt'
+        workflow_filename = 'tests.txt'
         workflow_content = "Code is Modified!!!"
         with open(workflow_filename, 'w', encoding='utf-8') as f:
             f.write(workflow_content)
