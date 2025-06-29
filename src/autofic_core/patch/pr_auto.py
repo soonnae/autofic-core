@@ -127,8 +127,7 @@ class BranchPRAutomation:
         elif f'origin/master' in branches:
             self.base_branch = 'master'
         else:
-            click.secho("[ ERROR ] main/master 브랜치가 없습니다.", fg="red")
-            raise RuntimeError("main/master 브랜치가 없습니다.")
+            self.base_branch = branches[0].split('/')[-1]
         
         # 4. PR 생성
         click.secho(f"[ INFO ] {self.user_name}/{self.repo_name}에 PR을 생성합니다. base branch: {self.base_branch}", fg="yellow")
@@ -213,6 +212,7 @@ class BranchPRAutomation:
         else:
             click.secho("[ FAIL ] 10분 내에 github/workflows/ci.yml, pr_notify.yml에 대한 Github Action이 성공적으로 끝나지 않았습니다.", fg="red")
             return
+            
         # 4. ci.yml, pr_notify.yml에 대해서 문제가 발생하지 않으면 -> 원본 레포에 PR 생성
         pr_url = f"https://api.github.com/repos/{self.upstream_owner}/{self.repo_name}/pulls"
         pr_body = self.generate_pr_markdown('../sast/before.json')
