@@ -94,6 +94,9 @@ class BranchPRAutomation:
         # self.slackwebhook_notifier(self.slack_webhook)
         CreateYml().pr_notify()
         # 일단 add, commit, push 진행(WHS_VULN_DETEC 브랜치에 대해서)
+        repo_url = f'https://x-access-token:{self.token}@github.com/{self.user_name}/{self.repo_name}.git'
+        subprocess.run(['git', 'remote', 'set-url', 'origin', repo_url], check=True)
+
         click.secho("[ INFO ] 생성한 .github/workflows/pr_notify.yml에 대한 push를 진행합니다.", fg="yellow")
         subprocess.run(['git', 'add', '.github/workflows/pr_notify.yml'], check=True)
         subprocess.run(['git', 'commit', '-m', "[Autofic] Create package.json and CI workflow"], check=True)
