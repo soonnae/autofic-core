@@ -2,7 +2,7 @@ name: Autofic SAST for Top 5 JS Repos
 
 on:
   schedule:
-    - cron: '47 02 * * *'  # 매일 KST 21:05 (UTC+9 → UTC 12:05)
+    - cron: '5 12 * * *'  # 매일 KST 21:05 (UTC+9 → UTC 12:05)
   workflow_dispatch:
 
 jobs:
@@ -10,8 +10,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout this repository (not strictly needed)
+      - name: Checkout this repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -20,25 +22,18 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip; pip install -r requirements.txt; pip install -e .
-      
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+
       - name: Set Git config
         run: |
           git config --global user.email "github-actions@users.noreply.github.com"
           git config --global user.name "github-actions"
-          
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-
-      - name: Set GitHub remote with token
-        run: |
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
 
       - name: Find Top 5 JS Repos and Run Autofic
         env:
-          GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPEN_API_KEY }}
           USER_NAME: ${{ secrets.USER_NAME }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
