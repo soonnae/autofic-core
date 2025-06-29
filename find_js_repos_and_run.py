@@ -2,11 +2,7 @@ import subprocess
 import os
 
 REPO_URLS = [
-    "https://github.com/markedjs/marked.git",
-    "https://github.com/validatorjs/validator.js.git",
-    "https://github.com/vercel/serve.git",
-    "https://github.com/http-party/http-server.git",
-    "https://github.com/expressjs/express.git",
+    'https://github.com/inyeongjang/corner4',
 ]
 
 def run_autofic(repo_url):
