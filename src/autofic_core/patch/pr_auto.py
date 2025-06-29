@@ -82,20 +82,20 @@ class BranchPRAutomation:
             subprocess.run(['git', 'checkout', branch_name], check=True)
         else:
             subprocess.run(['git', 'checkout', '-b', branch_name], check=True)
-        # js파일 종속 파일들에 대한 package.json, yml 파일 생성 (항상 Push)
-        click.secho("[ INFO ] package.json과 ci.yml, pr_notify.yml 파일을 생성합니다.", fg="yellow")
-        click.secho("[ INFO ] 기존 package.json 파일이 존재하더라도, 재생성됩니다.\n", fg="yellow")
-        # 의존성 추출 및 생성
-        CreatePackageJson().create_package_json(CreatePackageJson().extract_dependencies())
+        # # js파일 종속 파일들에 대한 package.json, yml 파일 생성 (항상 Push)
+        # click.secho("[ INFO ] package.json과 ci.yml, pr_notify.yml 파일을 생성합니다.", fg="yellow")
+        # click.secho("[ INFO ] 기존 package.json 파일이 존재하더라도, 재생성됩니다.\n", fg="yellow")
+        # # 의존성 추출 및 생성
+        # CreatePackageJson().create_package_json(CreatePackageJson().extract_dependencies())
         # CI, PR 알림 YML 파일 생성
-        CreateYml().ci_yml()
+        # CreateYml().ci_yml()
         # 자세한 함수 설명은 아래에서
         # self.discordwebhook_notifier(self.discord_webhook)
         # self.slackwebhook_notifier(self.slack_webhook)
         CreateYml().pr_notify()
         # 일단 add, commit, push 진행(WHS_VULN_DETEC 브랜치에 대해서)
-        click.secho("[ INFO ] 생성한 package.json과 .github/workflows/ci.yml, .github/workflows/pr_notify.yml에 대한 push를 진행합니다.", fg="yellow")
-        subprocess.run(['git', 'add', '.'], check=True)
+        click.secho("[ INFO ] 생성한 .github/workflows/pr_notify.yml에 대한 push를 진행합니다.", fg="yellow")
+        subprocess.run(['git', 'add', '.github/workflows/pr_notify.yml'], check=True)
         subprocess.run(['git', 'commit', '-m', "[Autofic] Create package.json and CI workflow"], check=True)
         subprocess.run(['git', 'push', 'origin', branch_name], check=True)
     
