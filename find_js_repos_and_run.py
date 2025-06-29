@@ -22,12 +22,13 @@ def run_autofic(repo):
     full_name = repo['full_name']  # OWNER/REPO
     
     tmp_dir = tempfile.mkdtemp()
+    orig_dir = os.getcwd()
     try:
-        # Clone repo
+        # Clone repo (공개 레포는 토큰 없이 clone 가능)
         subprocess.run(['git', 'clone', repo_url, tmp_dir], check=True)
         os.chdir(tmp_dir)
 
-        # Set remote URL with token
+        # 만약 push가 필요하다면 remote set-url, 아니면 생략 가능
         if GITHUB_TOKEN:
             subprocess.run([
                 'git', 'remote', 'set-url', 'origin',
@@ -45,7 +46,7 @@ def run_autofic(repo):
         print("Running:", " ".join(cmd))
         subprocess.run(cmd, check=True)
     finally:
-        os.chdir('..')
+        os.chdir(orig_dir)
         shutil.rmtree(tmp_dir)
 
 def main():
