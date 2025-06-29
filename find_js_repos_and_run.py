@@ -28,7 +28,7 @@ def run_autofic(repo):
     subprocess.run(cmd, check=True)
 
 def main():
-    repos = get_recent_js_repos(5)
+    repos = get_recent_js_repos(2)
     for repo in repos:
         try:
             run_autofic(repo)
