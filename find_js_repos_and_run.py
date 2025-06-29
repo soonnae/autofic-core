@@ -3,6 +3,11 @@ import os
 
 REPO_URLS = [
     'https://github.com/inyeongjang/corner4',
+    'https://github.com/markedjs/marked',
+    'https://github.com/validatorjs/validator.js',
+    'https://github.com/vercel/serve',
+    'https://github.com/http-party/http-server',
+    'https://github.com/expressjs/express ',
 ]
 
 def run_autofic(repo_url):
