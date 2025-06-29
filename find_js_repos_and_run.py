@@ -1,8 +1,10 @@
 import requests
 import subprocess
 import os
+import tempfile
+import shutil
 
-GITHUB_TOKEN = os.getenv('GIT_TOKEN', '') # 필요시 Personal Access Token 입력(공개 저장소만 쓸 땐 없어도 됨)
+GITHUB_TOKEN = os.getenv('GITHUB_TOKEN', '')
 HEADERS = {'Accept': 'application/vnd.github.v3+json'}
 if GITHUB_TOKEN:
     HEADERS['Authorization'] = f'token {GITHUB_TOKEN}'
@@ -13,26 +15,46 @@ def get_recent_js_repos(top_n=5):
     response = requests.get(url, headers=HEADERS)
     response.raise_for_status()
     repos = response.json()['items']
-    return [repo['clone_url'] for repo in repos]
+    return repos
 
-def run_autofic(repo_url):
-    cmd = [
-        'python', '-m', 'autofic_core.cli',
-        '--repo', repo_url,
-        '--save-dir', 'downloaded_folder',
-        '--sast',
-        '--rule', 'p/javascript'
-    ]
-    print("Running:", " ".join(cmd))
-    subprocess.run(cmd, check=True)
+def run_autofic(repo):
+    repo_url = repo['clone_url']
+    full_name = repo['full_name']  # OWNER/REPO
+    
+    tmp_dir = tempfile.mkdtemp()
+    try:
+        # Clone repo
+        subprocess.run(['git', 'clone', repo_url, tmp_dir], check=True)
+        os.chdir(tmp_dir)
+
+        # Set remote URL with token
+        if GITHUB_TOKEN:
+            subprocess.run([
+                'git', 'remote', 'set-url', 'origin',
+                f'https://x-access-token:{GITHUB_TOKEN}@github.com/{full_name}.git'
+            ], check=True)
+
+        # Run Autofic
+        cmd = [
+            'python', '-m', 'autofic_core.cli',
+            '--repo', repo_url,
+            '--save-dir', 'downloaded_folder',
+            '--sast',
+            '--rule', 'p/javascript'
+        ]
+        print("Running:", " ".join(cmd))
+        subprocess.run(cmd, check=True)
+    finally:
+        os.chdir('..')
+        shutil.rmtree(tmp_dir)
 
 def main():
     repos = get_recent_js_repos(5)
-    for repo_url in repos:
+    for repo in repos:
         try:
-            run_autofic(repo_url)
+            run_autofic(repo)
         except Exception as e:
-            print(f"Error running autofic on {repo_url}: {e}")
+            print(f"Error running autofic on {repo['clone_url']}: {e}")
 
 if __name__ == "__main__":
     main()
