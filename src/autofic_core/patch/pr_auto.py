@@ -86,8 +86,8 @@ class BranchPRAutomation:
         # CI, PR 알림 YML 파일 생성
         CreateYml().ci_yml()
         # 자세한 함수 설명은 아래에서
-        self.discordwebhook_notifier(self.discord_webhook)
-        self.slackwebhook_notifier(self.slack_webhook)
+        # self.discordwebhook_notifier(self.discord_webhook)
+        # self.slackwebhook_notifier(self.slack_webhook)
         CreateYml().pr_notify()
         # 일단 add, commit, push 진행(WHS_VULN_DETEC 브랜치에 대해서)
         click.secho("[ INFO ] 생성한 package.json과 .github/workflows/ci.yml, .github/workflows/pr_notify.yml에 대한 push를 진행합니다.", fg="yellow")
