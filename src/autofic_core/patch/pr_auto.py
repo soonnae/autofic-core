@@ -58,6 +58,8 @@ class BranchPRAutomation:
         # Discord, Slack을 Github랑 연결하려면, 아래 변수를 추가해야함
         self.secret_discord = 'DISCORD_WEBHOOK_URL'
         self.secret_slack = "SLACK_WEBHOOK_URL"
+        # 브랜치 숫자
+        self.branch_num = 1
         # 사용자 이름 없음 오류 반환
         if not self.user_name:
             click.secho(f"[ ERROR ] 사용자 이름이 누락되었습니다.", fg="yellow")
@@ -72,16 +74,35 @@ class BranchPRAutomation:
         else:
             raise RuntimeError("Not a github.com URL")
 
+import os
+import subprocess
+import re
+
     def run(self):
         # 0. clone한 디렉토리로 이동
         os.chdir(self.save_dir)
-        # 1. 브랜치 생성
-        branch_name = 'WHS_VULN_DETEC'
+    
+        # 1. 원격 브랜치 목록 조회
         branches = subprocess.check_output(['git', 'branch', '-r'], encoding='utf-8')
-        if ('origin/'+branch_name) in branches:
-            subprocess.run(['git', 'checkout', branch_name], check=True)
+    
+        # 2. WHS_VULN_DETEC_N 패턴 숫자 추출
+        prefix = "origin/WHS_VULN_DETEC_"
+        nums = [
+            int(m.group(1))
+            for m in re.finditer(rf"{re.escape(prefix)}(\d+)", branches)
+        ]
+        if nums:
+            next_num = max(nums) + 1
         else:
-            subprocess.run(['git', 'checkout', '-b', branch_name], check=True)
+            next_num = 1
+    
+        branch_name = f'WHS_VULN_DETEC_{next_num}'
+        print(f"[INFO] 생성할 브랜치: {branch_name}")
+    
+        # 3. 브랜치 생성
+        subprocess.run(['git', 'checkout', '-b', branch_name], check=True)
+        self.branch_name = branch_name  # 필요하다면 객체에 저장
+
         # # js파일 종속 파일들에 대한 package.json, yml 파일 생성 (항상 Push)
         # click.secho("[ INFO ] package.json과 ci.yml, pr_notify.yml 파일을 생성합니다.", fg="yellow")
         # click.secho("[ INFO ] 기존 package.json 파일이 존재하더라도, 재생성됩니다.\n", fg="yellow")
