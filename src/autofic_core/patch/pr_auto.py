@@ -78,7 +78,7 @@ class BranchPRAutomation:
         # 1. 브랜치 생성
         branch_name = 'WHS_VULN_DETEC'
         branches = subprocess.check_output(['git', 'branch', '-r'], encoding='utf-8')
-        if branch_name in branches:
+        if ('origin/'+branch_name) in branches:
             subprocess.run(['git', 'checkout', branch_name], check=True)
         else:
             subprocess.run(['git', 'checkout', '-b', branch_name], check=True)
