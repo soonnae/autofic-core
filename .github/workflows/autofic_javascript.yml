@@ -2,7 +2,7 @@ name: Autofic SAST for Top 5 JS Repos
 
 on:
   schedule:
-    - cron: '13 12 * * *'  # 매일 KST 21:05 (UTC+9 → UTC 12:05)
+    - cron: '47 02 * * *'  # 매일 KST 21:05 (UTC+9 → UTC 12:05)
   workflow_dispatch:
 
 jobs:
@@ -23,5 +23,7 @@ jobs:
           pip install --upgrade pip; pip install -r requirements.txt; pip install -e .
 
       - name: Find Top 5 JS Repos and Run Autofic
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python find_js_repos_and_run.py

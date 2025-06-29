@@ -1,7 +1,8 @@
 import requests
 import subprocess
+import os
 
-GITHUB_TOKEN = ''  # 필요시 Personal Access Token 입력(공개 저장소만 쓸 땐 없어도 됨)
+GITHUB_TOKEN = os.getenv('GITHUB_TOKEN', '') # 필요시 Personal Access Token 입력(공개 저장소만 쓸 땐 없어도 됨)
 HEADERS = {'Accept': 'application/vnd.github.v3+json'}
 if GITHUB_TOKEN:
     HEADERS['Authorization'] = f'token {GITHUB_TOKEN}'
