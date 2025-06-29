@@ -74,10 +74,6 @@ class BranchPRAutomation:
         else:
             raise RuntimeError("Not a github.com URL")
 
-import os
-import subprocess
-import re
-
     def run(self):
         # 0. clone한 디렉토리로 이동
         os.chdir(self.save_dir)
