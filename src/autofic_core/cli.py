@@ -75,55 +75,55 @@ def run_cli(repo, save_dir, sast, rule):
 
         click.secho(f"\n[ SUCCESS ] Semgrep 분석 완료! 결과가 '{semgrep_result_path}'에 저장되었습니다.\n", fg="green")
 
-        processed = SemgrepPreprocessor.preprocess(
-            input_json_path=semgrep_result_path,
-            base_dir=clone_path
-        )
-        merged = merge_snippets_by_location(processed)
+    #     processed = SemgrepPreprocessor.preprocess(
+    #         input_json_path=semgrep_result_path,
+    #         base_dir=clone_path
+    #     )
+    #     merged = merge_snippets_by_location(processed)
 
-        prompts_generator = PromptGenerator()
-        prompts = prompts_generator.generate_prompts(merged)
+    #     prompts_generator = PromptGenerator()
+    #     prompts = prompts_generator.generate_prompts(merged)
 
-        llm = LLMRunner()
-        llm_output_dir = save_dir / "llm"
-        click.echo("\nGPT 응답 생성 및 저장 시작\n")
-        with create_progress() as progress:
-            task = progress.add_task("[magenta]LLM 응답 중...", total=len(prompts))
-            for p in prompts:
-                response = llm.run(p.prompt)
-                save_md_response(response, p.snippet, output_dir=llm_output_dir)
-                progress.update(task, advance=1)
-                time.sleep(0.05)
-            progress.update(task, completed=100)
+    #     llm = LLMRunner()
+    #     llm_output_dir = save_dir / "llm"
+    #     click.echo("\nGPT 응답 생성 및 저장 시작\n")
+    #     with create_progress() as progress:
+    #         task = progress.add_task("[magenta]LLM 응답 중...", total=len(prompts))
+    #         for p in prompts:
+    #             response = llm.run(p.prompt)
+    #             save_md_response(response, p.snippet, output_dir=llm_output_dir)
+    #             progress.update(task, advance=1)
+    #             time.sleep(0.05)
+    #         progress.update(task, completed=100)
 
-        click.secho(f"\n[ SUCCESS ] GPT 응답이 .md 파일로 저장 완료되었습니다!\n", fg="green")
+    #     click.secho(f"\n[ SUCCESS ] GPT 응답이 .md 파일로 저장 완료되었습니다!\n", fg="green")
 
-    # diff 파일 생성
-    diff_dir = save_dir / "diff"
-    diff_dir.mkdir(parents=True, exist_ok=True)
-    parser = ResponseParser(md_dir=llm_output_dir, diff_dir=diff_dir)
-    success = parser.extract_and_save_all()
-    if success:
-        click.secho(f"\n[ SUCCESS ] diff 파일들이 '{diff_dir}'에 생성되었습니다.\n", fg="green")
-    else:
-        click.secho(f"\n[ ERROR ] diff 파일 생성 중 문제가 발생했습니다.\n", fg="red")
-        return
+    # # diff 파일 생성
+    # diff_dir = save_dir / "diff"
+    # diff_dir.mkdir(parents=True, exist_ok=True)
+    # parser = ResponseParser(md_dir=llm_output_dir, diff_dir=diff_dir)
+    # success = parser.extract_and_save_all()
+    # if success:
+    #     click.secho(f"\n[ SUCCESS ] diff 파일들이 '{diff_dir}'에 생성되었습니다.\n", fg="green")
+    # else:
+    #     click.secho(f"\n[ ERROR ] diff 파일 생성 중 문제가 발생했습니다.\n", fg="red")
+    #     return
 
-    # diff 병합
-    result_dir = save_dir / "result"
-    result_dir.mkdir(parents=True, exist_ok=True)
+    # # diff 병합
+    # result_dir = save_dir / "result"
+    # result_dir.mkdir(parents=True, exist_ok=True)
 
-    diff_generator = DiffGenerator(repo_dir=clone_path, diff_dir=diff_dir)
-    diffs = diff_generator.load_diffs()
-    if not diffs:
-        click.secho(f"\n[ WARN ] 적용할 diff 파일이 없습니다.\n", fg="yellow")
-        return
+    # diff_generator = DiffGenerator(repo_dir=clone_path, diff_dir=diff_dir)
+    # diffs = diff_generator.load_diffs()
+    # if not diffs:
+    #     click.secho(f"\n[ WARN ] 적용할 diff 파일이 없습니다.\n", fg="yellow")
+    #     return
 
-    click.echo("\nDiff 병합 및 파일 저장 시작\n")
-    diff_merger = DiffMerger(diffs=diffs, clone_path=clone_path, result_path=result_dir)
-    diff_merger.merge_all()
+    # click.echo("\nDiff 병합 및 파일 저장 시작\n")
+    # diff_merger = DiffMerger(diffs=diffs, clone_path=clone_path, result_path=result_dir)
+    # diff_merger.merge_all()
 
-    click.secho(f"\n[ SUCCESS ] 병합된 결과가 '{result_dir}'에 저장되었습니다.\n", fg="green")
+    # click.secho(f"\n[ SUCCESS ] 병합된 결과가 '{result_dir}'에 저장되었습니다.\n", fg="green")
 
 if __name__ == '__main__':
     main()
