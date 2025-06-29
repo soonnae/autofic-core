@@ -77,7 +77,11 @@ class BranchPRAutomation:
         os.chdir(self.save_dir)
         # 1. 브랜치 생성
         branch_name = 'WHS_VULN_DETEC'
-        subprocess.run(['git', 'checkout', '-b', branch_name], check=True)
+        branches = subprocess.check_output(['git', 'branch', '-r'], encoding='utf-8')
+        if branch_name in branches:
+            subprocess.run(['git', 'checkout', branch_name], check=True)
+        else:
+            subprocess.run(['git', 'checkout', '-b', branch_name], check=True)
         # js파일 종속 파일들에 대한 package.json, yml 파일 생성 (항상 Push)
         click.secho("[ INFO ] package.json과 ci.yml, pr_notify.yml 파일을 생성합니다.", fg="yellow")
         click.secho("[ INFO ] 기존 package.json 파일이 존재하더라도, 재생성됩니다.\n", fg="yellow")
