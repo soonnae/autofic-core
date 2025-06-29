@@ -8,7 +8,7 @@ if GITHUB_TOKEN:
     HEADERS['Authorization'] = f'token {GITHUB_TOKEN}'
 
 def get_recent_js_repos(top_n=5):
-    query = 'language:JavaScript pushed:>2024-01-01'
+    query = 'language:JavaScript pushed:>2025-01-01'
     url = f"https://api.github.com/search/repositories?q={query}&sort=pushed&order=desc&per_page={top_n}"
     response = requests.get(url, headers=HEADERS)
     response.raise_for_status()
