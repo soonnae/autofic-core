@@ -24,6 +24,6 @@ jobs:
 
       - name: Find Top 5 JS Repos and Run Autofic
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}
         run: |
           python find_js_repos_and_run.py
