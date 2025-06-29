@@ -32,6 +32,9 @@ jobs:
         with:
           persist-credentials: true
 
+      - name: Set GitHub remote with token
+        run: |
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
 
       - name: Find Top 5 JS Repos and Run Autofic
         env:
