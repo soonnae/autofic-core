@@ -15,18 +15,28 @@
 
 """Contains their functional aliases.
 """
-
 import os
 import subprocess
 import click
 
-# GitHub Actions ci.yml, pr_notify.yml 파일 생성
+# Handles creation and git operations for GitHub Actions workflow YAML files
 class AboutYml:
+    """
+    Class for managing GitHub Actions workflow YAML files.
+    Provides methods to create workflow files and push them to a repository.
+    """
     def __init__(self, start_dir="."):
+        """
+        Initialize with the starting directory (default: current directory).
+        :param start_dir: Base directory for workflow file operations.
+        """
         self.start_dir = start_dir
         
- # pr_notify.yml 파일 생성
     def create_pr_yml(self):
+        """
+        Create the 'pr_notify.yml' GitHub Actions workflow file.
+        This workflow sends notifications to Discord and Slack when a pull request is opened, reopened, or closed.
+        """
         workflow_dir = os.path.join(self.start_dir, ".github", "workflows")
         os.makedirs(workflow_dir, exist_ok=True)
 
@@ -60,10 +70,18 @@ jobs:
             f.write(pr_notify_yml_content)
             
     def push_pr_yml(self, user_name, repo_name, token, branch_name):
-                # 일단 add, commit, push 진행(WHS_VULN_DETEC 브랜치에 대해서)
+        """
+        Adds, commits, and pushes the created workflow YAML file to the specified git branch.
+        The remote URL is set to use the provided GitHub token for authentication.
+
+        :param user_name: GitHub username (repository owner)
+        :param repo_name: Name of the repository
+        :param token: GitHub access token (for authentication)
+        :param branch_name: Name of the branch to push to
+        """
         repo_url = f'https://x-access-token:{token}@github.com/{user_name}/{repo_name}.git'
         subprocess.run(['git', 'remote', 'set-url', 'origin', repo_url], check=True)
-        click.secho("[ INFO ] 생성한 .github/workflows/pr_notify.yml에 대한 push를 진행합니다.", fg="yellow")
+        click.secho("[ INFO ] Pushing the generated .github/workflows/pr_notify.yml.", fg="yellow")
         subprocess.run(['git', 'add', '.github/workflows/pr_notify.yml'], check=True)
         subprocess.run(['git', 'commit', '-m', "[Autofic] Create package.json and CI workflow"], check=True)
         subprocess.run(['git', 'push', 'origin', branch_name], check=True)
