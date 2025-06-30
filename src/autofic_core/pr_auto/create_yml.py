@@ -72,7 +72,7 @@ jobs:
     def push_pr_yml(self, user_name, repo_name, token, branch_name):
         """
         Adds, commits, and pushes the created workflow YAML file to the specified git branch.
-        The remote URL is set to use the provided GitHub token for authentication.
+        The remote URL is set to use the provided GitHub token for authentication. (Needed!)
 
         :param user_name: GitHub username (repository owner)
         :param repo_name: Name of the repository

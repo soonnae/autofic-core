@@ -178,10 +178,8 @@ class PRProcedure:
         subprocess.run(['git', 'commit', '-m', f"[Autofic] {len(data.get('results', []))} malicious code detected!!"], check=True)
         try:
             subprocess.run(['git', 'push', 'origin', self.branch_name], check=True)
-            print(f"[SUCCESS] Pushed to branch {self.branch_name}")
             return True
         except subprocess.CalledProcessError as e:
-            print(f"[ERROR] Push failed: {e}")
             return False
     
     def current_main_branch(self):
@@ -219,12 +217,9 @@ class PRProcedure:
         }
         pr_resp = requests.post(pr_url, json=data_post, headers=headers)
         if pr_resp.status_code in (201, 202):
-            pr_json = pr_resp.json()
-            print(f"[SUCCESS] PR created! URL: {pr_json.get('html_url')}")
             time.sleep(0.05)
             return True
         else:
-            print(f"[ERROR] Failed to create PR: {pr_resp.status_code}\n{pr_resp.text}")
             return False
     
     def create_pr(self):
@@ -278,7 +273,7 @@ class PRProcedure:
         else:
             return
         
-        # Step 4. If all checks pass, create PR to upstream/original repository
+        # Step 4. If all checks pass('success'), create PR to upstream/original repository
         pr_url = f"https://api.github.com/repos/{self.upstream_owner}/{self.repo_name}/pulls"
         pr_body = self.generate_markdown('../sast/before.json')
         data_post = {
