@@ -227,17 +227,17 @@ class PRProcedure:
             print(f"[ERROR] Failed to create PR: {pr_resp.status_code}\n{pr_resp.text}")
             return False
     
-    def create_pr_to_self(self):
+    def create_pr(self):
         """
         After PR is opened on fork, waits for CI to pass and then automatically creates a PR to the upstream repository.
         """
         # Step 1. Find latest open PR on fork
         prs_url = f"https://api.github.com/repos/{self.user_name}/{self.repo_name}/pulls"
-        self.headers = {
+        headers = {
             "Authorization": f"token {self.token}",
             "Accept": "application/vnd.github+json"
         }
-        prs_resp = requests.get(prs_url, headers=self.headers, params={"state": "open", "per_page": 1, "sort": "created", "direction": "desc"})
+        prs_resp = requests.get(prs_url, headers=headers, params={"state": "open", "per_page": 1, "sort": "created", "direction": "desc"})
         prs = prs_resp.json()
         if not prs:
             return
@@ -249,7 +249,7 @@ class PRProcedure:
         runs_url = f"https://api.github.com/repos/{self.user_name}/{self.repo_name}/actions/runs"
         run_id = None
         for _ in range(60):  # Wait up to 5 minutes
-            runs_resp = requests.get(runs_url, headers=self.headers, params={"event": "pull_request", "per_page": 20})
+            runs_resp = requests.get(runs_url, headers=headers, params={"event": "pull_request", "per_page": 20})
             runs = runs_resp.json().get("workflow_runs", [])
             for run in runs:
                 pr_list = run.get("pull_requests", [])
@@ -265,7 +265,7 @@ class PRProcedure:
         # Step 3. Wait until the workflow run completes successfully
         run_url = f"https://api.github.com/repos/{self.user_name}/{self.repo_name}/actions/runs/{run_id}"
         for _ in range(120):  # Wait up to 10 minutes
-            run_resp = requests.get(run_url, headers=self.headers)
+            run_resp = requests.get(run_url, headers=headers)
             run_info = run_resp.json()
             run_status = run_info.get("status")
             conclusion = run_info.get("conclusion") # This code block will judge whether pr to upstream repo
@@ -278,7 +278,6 @@ class PRProcedure:
         else:
             return
         
-    def create_pr_to_upstream(self):
         # Step 4. If all checks pass, create PR to upstream/original repository
         pr_url = f"https://api.github.com/repos/{self.upstream_owner}/{self.repo_name}/pulls"
         pr_body = self.generate_markdown('../sast/before.json')
@@ -288,7 +287,7 @@ class PRProcedure:
             "base": self.base_branch,
             "body": pr_body
         }
-        pr_resp = requests.post(pr_url, json=data_post, headers=self.headers)
+        pr_resp = requests.post(pr_url, json=data_post, headers=headers)
         if pr_resp.status_code in (201, 202):
             pr_json = pr_resp.json()
         else:
