@@ -1,8 +1,8 @@
-name: Autofic SAST for Top 5 JS Repos
+name: Autofic SAST for Selected JavaScript Repos
 
 on:
   schedule:
-    - cron: '5 12 * * *'  # 매일 KST 21:05 (UTC+9 → UTC 12:05)
+    - cron: '00 21 * * 0'  # 매주 월요일 오전 6시
   workflow_dispatch:
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
           git config --global user.email "github-actions@users.noreply.github.com"
           git config --global user.name "github-actions"
 
-      - name: Run Autofic for 5 JS Repos
+      - name: Run ci_automation.py automatically
         env:
           GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPEN_API_KEY }}
@@ -39,4 +39,4 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          python find_js_repos_and_run.py
+          python src/autofic_core/ci_cd_auto/ci_automation.py
