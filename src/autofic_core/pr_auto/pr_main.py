@@ -13,8 +13,7 @@
 # limitations under the License.
 # =============================================================================
 
-"""Contains their functional aliases.
-"""
+"""Contains their functional aliases."""
 
 import os
 from .create_yml import AboutYml
@@ -22,7 +21,27 @@ from .env_encrypt import EnvEncrypy
 from .pr_procedure import PRProcedure
 
 class BranchPRAutomation:
+    """
+    High-level automation for pull request (PR) creation, including:
+    - Repository initialization
+    - Branch setup
+    - Workflow file management
+    - GitHub Actions secret registration (Discord/Slack webhooks)
+    - File change/commit/push
+    - PR creation (fork and upstream)
+    - Status/result tracking
+
+    Each step's result is recorded in the 'self.result' dictionary.
+    """
+
     def __init__(self, repo_url: str, save_dir: str):
+        """
+        Initialize automation with repository URL and local save directory.
+        Loads all required environment variables for authentication and webhooks.
+
+        :param repo_url: URL of the GitHub repository
+        :param save_dir: Local directory for repository operations
+        """
         self.result = {
             "post_init": False,
             "mv_workdir": False,
@@ -52,6 +71,19 @@ class BranchPRAutomation:
         self.discord_webhook = os.environ.get('DISCORD_WEBHOOK_URL')
 
     def run(self):
+        """
+        Orchestrates the entire PR automation workflow, step-by-step:
+        1. Initializes repository and branch info
+        2. Moves to the working directory
+        3. Checks/creates working branch
+        4. Registers Discord and Slack webhooks as GitHub Actions secrets
+        5. Creates and pushes the workflow YAML file
+        6. Makes file changes and commits/pushes
+        7. Determines the main branch name
+        8. Creates a pull request on the fork
+        9. Creates a PR to the upstream repository
+        Returns a dictionary summarizing the status of each step.
+        """
         pr_procedure = PRProcedure(
             self.base_branch, self.repo_name,
             self.upstream_owner, self.save_dir, self.repo_url,
@@ -91,10 +123,7 @@ class BranchPRAutomation:
         pr_procedure.generate_pr()
         self.result["generate_pr"] = True
 
-        pr_procedure.create_pr_to_self()
+        pr_procedure.create_pr()
         self.result["create_upstream_pr"] = True
         
-        if self.result['create_upstream_pr']:
-            pr_procedure.create_pr_to_upstream
-
         return self.result
