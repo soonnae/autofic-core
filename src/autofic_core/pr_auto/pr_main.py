@@ -76,7 +76,7 @@ class BranchPRAutomation:
         pr_procedure.create_pr_to_self()
         self.result["create_upstream_pr"] = True
         
-        if self.result:
+        if self.result['create_upstream_pr']:
             pr_procedure.create_pr_to_upstream
 
         return self.result
