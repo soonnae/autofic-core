@@ -19,6 +19,7 @@ import os
 from .create_yml import AboutYml
 from .env_encrypt import EnvEncrypy
 from .pr_procedure import PRProcedure
+from autofic_core.pages.log_writer import LogManager
 
 class BranchPRAutomation:
     """
@@ -122,7 +123,13 @@ class BranchPRAutomation:
         # Chapter 8,9
         pr_procedure.generate_pr()
         self.result["generate_pr"] = True
-        pr_procedure.create_pr()
+        pr_number = pr_procedure.create_pr()
         self.result["create_upstream_pr"] = True
+        # for log
+        log_manager = LogManager()
+        if pr_number:
+            pr_creation_data, repo_status_data = pr_procedure.generate_log_data(pr_number)
+            log_manager.add_pr_log(**pr_creation_data)
+            log_manager.add_repo_log(**repo_status_data)
         # END
         return self.result
