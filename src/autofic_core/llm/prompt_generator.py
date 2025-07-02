@@ -7,48 +7,51 @@ from autofic_core.errors import (
     PromptGeneratorErrorMessages,
 )
 
+
 class PromptTemplate(BaseModel):
     title: str
     content: str
 
     def render(self, snippet: SemgrepSnippet) -> str:
         if not snippet.snippet.strip():
-            raise PromptGenerationException (
+            raise PromptGenerationException(
                 PromptGeneratorErrorCodes.EMPTY_SNIPPET,
                 PromptGeneratorErrorMessages.EMPTY_SNIPPET,
             )
-        
+
         try:
-            return self.content.format (
-                input = snippet.input,
-                snippet = snippet.snippet,
-                vulnerability_class = ", ".join(snippet.vulnerability_class) or "알 수 없음",
-                cwe = ", ".join(map(str, snippet.cwe)) or "해당 없음",
-                message = snippet.message or "없음",
-                severity = snippet.severity or "정보 없음",
+            return self.content.format(
+                input=snippet.input,
+                snippet=snippet.snippet,
+                start_line=snippet.start_line or 1,
+                vulnerability_class=", ".join(snippet.vulnerability_class) or "알 수 없음",
+                cwe=", ".join(map(str, snippet.cwe)) or "해당 없음",
+                message=snippet.message or "없음",
+                severity=snippet.severity or "정보 없음",
             )
-        
-        except Exception as e:
-            raise PromptGenerationException (
+        except Exception:
+            raise PromptGenerationException(
                 PromptGeneratorErrorCodes.TEMPLATE_RENDER_ERROR,
                 PromptGeneratorErrorMessages.TEMPLATE_RENDER_ERROR,
             )
+
 
 class GeneratedPrompt(BaseModel):
     title: str
     prompt: str
     snippet: SemgrepSnippet
 
+
 class PromptGenerator:
     def __init__(self):
-        self.template = PromptTemplate (
-            title = "취약한 코드 스니펫 리팩토링",
-            content = ( 
+        self.template = PromptTemplate(
+            title="취약한 코드 스니펫 리팩토링",
+            content=(
                 "다음은 전체 코드입니다 (참고용입니다) :\n\n"
                 "```python\n"
                 "{input}\n"
                 "```\n\n"
-                "이 중 다음 스니펫에서 취약점이 발견되었습니다 :\n\n"
+                "이 중 다음 스니펫에서 취약점이 발견되었습니다 (시작 줄 번호: {start_line}) :\n\n"
                 "```python\n"
                 "{snippet}\n"
                 "```\n\n"
@@ -63,21 +66,28 @@ class PromptGenerator:
                 "1. 취약점 설명 :\n"
                 "2. 예상 위험 :\n"
                 "3. 개선 방안 :\n"
-                "4. 수정된 코드 :\n"
+                "4. 수정된 코드 (unified diff 형식으로 보여주세요) :\n\n"
+                "**예시:**\n"
+                "```diff\n"
+                "@@ -23,7 +23,10 @@\n"
+                "- const a = 1;\n"
+                "+ const a = 2;\n"
+                "```\n\n"
                 "5. 기타 참고사항 :\n"
             ),
         )
 
     def generate_prompt(self, snippet: SemgrepSnippet) -> GeneratedPrompt:
         rendered_prompt = self.template.render(snippet)
-        return GeneratedPrompt (
-            title=self.template.title, prompt=rendered_prompt, snippet=snippet
+        return GeneratedPrompt(
+            title=self.template.title,
+            prompt=rendered_prompt,
+            snippet=snippet,
         )
-        
 
     def generate_prompts(self, snippets: List[SemgrepSnippet]) -> List[GeneratedPrompt]:
         if not isinstance(snippets, list):
-            raise PromptGenerationException (
+            raise PromptGenerationException(
                 PromptGeneratorErrorCodes.INVALID_SNIPPET_LIST,
                 PromptGeneratorErrorMessages.INVALID_SNIPPET_LIST,
             )
