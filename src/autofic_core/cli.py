@@ -14,7 +14,9 @@ from autofic_core.llm.llm_runner import LLMRunner, save_md_response
 from autofic_core.llm.response_parser import ResponseParser
 from autofic_core.patch.diff_generator import DiffGenerator
 from autofic_core.patch.diff_merger import DiffMerger
-from autofic_core.pr_auto.pr_main import BranchPRAutomation
+from autofic_core.pr_auto.create_yml import AboutYml
+from autofic_core.pr_auto.env_encrypt import EnvEncrypy
+from autofic_core.pr_auto.pr_procedure import PRProcedure
 
 load_dotenv()
 
@@ -25,7 +27,6 @@ load_dotenv()
 @click.option('--rule', default=os.getenv("SEMGREP_RULE"), help='Semgrep 규칙')
 def main(repo, save_dir, sast, rule):
     run_cli(repo, save_dir, sast, rule)
-    BranchPRAutomation(repo, save_dir).run()
 
 def run_cli(repo, save_dir, sast, rule):
     save_dir = Path(save_dir).expanduser().resolve()
@@ -124,6 +125,49 @@ def run_cli(repo, save_dir, sast, rule):
     diff_merger.merge_all()
 
     click.secho(f"\n[ SUCCESS ] 병합된 결과가 '{result_dir}'에 저장되었습니다.\n", fg="green")
+    
+    # PR 자동화
+    branch_num = 1
+    base_branch = 'main'
+    branch_name = "UNKNOWN"
+    repo_name = "UNKOWN"
+    upstream_owner = "UNKOWN"
+    save_dir = save_dir.joinpath('repo')
+    repo_url = repo.rstrip('/').replace('.git', '')
+    secret_discord = os.getenv('DISCORD_WEBHOOK_URL')
+    secret_slack = os.getenv('SLACK_WEBHOOK_URL')
+    token = os.getenv('GITHUB_TOKEN')
+    user_name = os.getenv('USER_NAME')
+    slack_webhook = os.environ.get('SLACK_WEBHOOK_URL')
+    discord_webhook = os.environ.get('DISCORD_WEBHOOK_URL')
+
+    # Define PRProcedure class
+    pr_procedure = PRProcedure(
+        base_branch, repo_name, upstream_owner, 
+        save_dir, repo_url, token, user_name
+    )
+    # Chapter 1
+    pr_procedure.post_init()
+    repo_name = pr_procedure.repo_name
+    upstream_owner = pr_procedure.upstream_owner
+    # Chaper 2
+    pr_procedure.mv_workdir()
+    # Chapter 3
+    pr_procedure.check_branch_exists()
+    branch_name = pr_procedure.branch_name
+    # Chapter 4
+    EnvEncrypy(user_name, repo_name, token).webhook_secret_notifier('DISCORD_WEBHOOK_URL', secret_discord)
+    EnvEncrypy(user_name, repo_name, token).webhook_secret_notifier('SLACK_WEBHOOK_URL', secret_slack)
+    # Chapter 5
+    AboutYml().create_pr_yml()
+    AboutYml().push_pr_yml(user_name, repo_name, token, branch_name)
+    # Chapter 6
+    pr_procedure.change_files()
+    # Chapter 7
+    pr_procedure.current_main_branch()
+    # Chapter 8,9
+    pr_procedure.generate_pr()
+    pr_procedure.create_pr()
 
 if __name__ == '__main__':
     main()
