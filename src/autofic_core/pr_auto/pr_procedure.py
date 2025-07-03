@@ -24,6 +24,7 @@ import requests
 import subprocess
 from pydantic import BaseModel
 from typing import List, Optional
+from collections import defaultdict
 
 """
 Pydantic Vulnerability Report Model Structure
@@ -287,15 +288,29 @@ class PRProcedure:
             pr_json = pr_resp.json()
         else:
             return
-            
-    def generate_markdown(self, json_path: str) -> str:
-        """
-        Loads the vulnerability report and generates a markdown summary
-        for the PR body, including details on each finding and fix recommendations.
 
-        :param json_path: Path to the vulnerability report JSON file
-        :return: Markdown-formatted string
+    def generate_markdown(self, json_path: str) -> str:
+        """ Generates a markdown summary from a Semgrep JSON report.
+        The markdown includes:
+        - Security patch summary
+        - List of detected vulnerabilities with file, line, severity, and references
+        - Fix suggestions extracted from markdown files in the '../llm' directory
+        - General fix details
         """
+        def extract_fix_suggestion(md_path: str) -> str:
+            """ Extracts the fix suggestion from a markdown file.
+            Assumes the fix suggestion is under a section"""
+            try:
+                with open(md_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    pattern = r'3\.\s*\**개선\s*방안\**\s*:?[\n\r]+(.*?)(?=\n\s*\d+\.\s|\Z)'
+                    match = re.search(pattern, content, re.DOTALL | re.IGNORECASE)
+                    if match:
+                        return match.group(1).strip()
+            except Exception:
+                pass
+            return "Fix suggestion not found."
+
         with open(json_path, 'r', encoding='utf-8') as f:
             try:
                 data = VulnerabilityReport.parse_raw(f.read())
@@ -303,28 +318,55 @@ class PRProcedure:
                 f.seek(0)
                 data_dict = json.load(f)
                 data = VulnerabilityReport(**data_dict)
-        md = []
-        md.append("## 🛠️ Security Patch Summary\n")
-        for idx, item in enumerate(data.results, 1):
-            path = item.path.split('/')[-1] or "Unknown"
-            start_line = item.start.get("line", "?") if item.start else "?"
-            start_col = item.start.get("col", "?") if item.start else "?"
-            end_col = item.end.get("col", "?") if item.end else "?"
-            extra = item.extra or VulnerabilityExtra()
-            message = extra.message or ""
-            severity = extra.severity or "UNKNOWN"
-            meta = extra.metadata or VulnerabilityMeta()
-            vuln_type = ", ".join(meta.vulnerability_class or [])
-            cwe = ", ".join(meta.cwe or [])
-            ref_link = meta.references[0] if meta.references else ""
+
+        grouped = defaultdict(list)
+        for item in data.results:
+            filename = os.path.basename(item.path)
+            line = item.start.get("line", "?") if item.start else "?"
+            grouped[(filename, line)].append(item)
+
+        md = ["## 🛠️ Security Patch Summary\n"]
+        if not grouped:
+            md.append("No vulnerabilities detected. No changes made.\n")
+            return "\n".join(md)
+
+        for idx, ((filename, line), items) in enumerate(grouped.items(), 1):
+            start_col = items[0].start.get("col", "?") if items[0].start else "?"
+            end_col = items[0].end.get("col", "?") if items[0].end else "?"
+            vuln_type = ", ".join(items[0].extra.metadata.vulnerability_class or [])
+            cwe = ", ".join(items[0].extra.metadata.cwe or [])
             md.append(f"### {idx}. {vuln_type or cwe or 'N/A'} Detected\n")
-            md.append(f"- **File:** {path}")
-            md.append(f"- **Line:** {start_line} (col {start_col}~{end_col})")
-            md.append(f"- **Severity:** {severity}")
-            md.append(f"- **Message:** {message}")
-            if ref_link:
-                md.append(f"- **Reference:** {ref_link}")
+            md.append(f"- **🗂️ File:** {filename}")
+            md.append(f"- **#️⃣ Line:** {line} (col {start_col}~{end_col})")
+            first_severity = items[0].extra.severity or "UNKNOWN"
+            first_refs = items[0].extra.metadata.references if items[0].extra.metadata and items[0].extra.metadata.references else []
+            if first_refs:
+                md.append(f"- **🛡️ Severity:** {first_severity}")
+                md.append(f"- **🔗 Reference:** {first_refs[0]}")
+            else:
+                md.append(f"- **🛡️ Severity:** {first_severity}")
+            for i, item in enumerate(items, 1):
+                msg = item.extra.message or ""
+                md.append(f"- **✍️ Semgrep Message {i}:** {msg}")
+            for eachname in os.listdir('../llm'):
+                if self.contains_all(eachname, filename, str(line)):
+                    md.append(f"- **🤖 How to fix :**")
+                    md_path = os.path.join('../llm', eachname)
+                    fix_text = extract_fix_suggestion(md_path)
+                    fix_lines = fix_text.strip().splitlines()
+                    for line_fix in fix_lines:
+                        line_fix = line_fix.strip()
+                        if line_fix.startswith("-"):
+                            md.append(f"  {line_fix}")
+                        else:
+                            md.append(f"  - {line_fix}")
+                    break
+
         md.append("\n### 💉 Fix Details\n")
         md.append("All vulnerable code paths have been refactored to use parameterized queries or input sanitization as recommended in the references above. Please refer to the diff for exact code changes.\n")
         md.append("---\n")
         return "\n".join(md)
+    
+    def contains_all(self, text, *keywords):
+        """ Check if all keywords are present in the text."""
+        return all(k in text for k in keywords)
