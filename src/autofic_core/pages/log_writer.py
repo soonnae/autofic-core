@@ -1,48 +1,55 @@
-import json
+import requests
 import os
 
 class LogManager:
-    def __init__(self, log_path=None):
-        if log_path:
-            self.log_path = os.path.abspath(log_path)
-        else:
-            self.log_path = os.path.join(os.path.dirname(__file__), 'log.json')
+    def __init__(self):
+        """
+        서버 생성: https://autofic_log-server.com
+        """
+        self.api_base_url = (os.getenv('LOG_API_URL')).rstrip('/')
 
-    def load(self):
-        if os.path.exists(self.log_path):
-            with open(self.log_path, "r", encoding="utf-8") as f:
-                try:
-                    logs = json.load(f)
-                except json.JSONDecodeError:
-                    logs = {}
-        else:
-            logs = {}
+    def get_logs(self):
+        """
+        서버로 부터 log.json 가져오기 
+        """
+        url = f"{self.api_base_url}/log.json"
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json()
 
-        logs.setdefault("prs", [])
-        logs.setdefault("repos", [])
-        return logs
-
-    def save(self, logs):
-        with open(self.log_path, "w", encoding="utf-8") as f:
-            json.dump(logs, f, ensure_ascii=False, indent=2)
-        print("log.json 업데이트 완료")
+    def save_logs(self, logs):
+        """
+        전체 log.json 덮어쓰기
+        """
+        url = f"{self.api_base_url}/log.json"
+        response = requests.put(url, json=logs)
+        response.raise_for_status()
+        return response.json()
 
     def add_pr_log(self, date, repo, pr_number):
-        logs = self.load()
-        logs["prs"] = [p for p in logs["prs"] if not (p["pr_number"] == pr_number and p["repo"] == repo)]
-        logs["prs"].append({
+        """
+        PR 기록
+        """
+        url = f"{self.api_base_url}/add_pr"
+        payload = {
             "date": date,
             "repo": repo,
             "pr_number": pr_number
-        })
-        self.save(logs)
+        }
+        response = requests.post(url, json=payload)
+        response.raise_for_status()
+        return response.json()
 
-    def add_repo_log(self, name, url, vulnerabilities):
-        logs = self.load()
-        logs["repos"] = [r for r in logs["repos"] if r["name"] != name]
-        logs["repos"].append({
+    def add_repo_status(self, name, url_, vulnerabilities):
+        """
+        repo 상태 기록
+        """
+        url = f"{self.api_base_url}/add_repo_status"
+        payload = {
             "name": name,
-            "url": url,
+            "url": url_,
             "vulnerabilities": vulnerabilities
-        })
-        self.save(logs)
+        }
+        response = requests.post(url, json=payload)
+        response.raise_for_status()
+        return response.json()

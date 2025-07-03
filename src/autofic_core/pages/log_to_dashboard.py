@@ -1,16 +1,21 @@
+import requests
 import json
 from datetime import datetime, timedelta
 import os
 
 class DashboardBuilder:
-    def __init__(self, log_path=None, dashboard_path=None):
+    def __init__(self, api_url, dashboard_path=None):
+        self.api_url = api_url.rstrip('/')
         base_dir = os.path.dirname(__file__)
-        self.log_path = os.path.abspath(log_path or os.path.join(base_dir, 'log.json'))
-        self.dashboard_path = os.path.abspath(dashboard_path or os.path.join(base_dir, 'dashboard_data.json'))
+        self.dashboard_path = os.path.abspath(
+            dashboard_path or os.path.join(base_dir, 'dashboard_data.json')
+        )
 
     def load_log_data(self):
-        with open(self.log_path, encoding="utf-8") as f:
-            return json.load(f)
+        print(f"[INFO] Fetching log from {self.api_url}/log.json")
+        response = requests.get(f"{self.api_url}/log.json")
+        response.raise_for_status()
+        return response.json()
 
     def build_dashboard_data(self, logs):
         today = datetime.now().date()
@@ -32,7 +37,7 @@ class DashboardBuilder:
     def save_dashboard_data(self, dashboard_data):
         with open(self.dashboard_path, "w", encoding="utf-8") as f:
             json.dump(dashboard_data, f, ensure_ascii=False, indent=2)
-        print(f"dashboard_data.json 생성 완료")
+        print(f"[INFO] dashboard_data.json 생성 완료 → {self.dashboard_path}")
 
     def run(self):
         try:
@@ -43,6 +48,7 @@ class DashboardBuilder:
             print(f"[ERROR] Dashboard generation failed: {e}")
 
 if __name__ == "__main__":
-    builder = DashboardBuilder()
+    api_url = os.getenv("LOG_API_URL")
+    builder = DashboardBuilder(api_url)
     builder.run()
 

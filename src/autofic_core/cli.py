@@ -17,6 +17,7 @@ from autofic_core.patch.diff_merger import DiffMerger
 from autofic_core.pr_auto.create_yml import AboutYml
 from autofic_core.pr_auto.env_encrypt import EnvEncrypy
 from autofic_core.pr_auto.pr_procedure import PRProcedure
+from autofic_core.pages.log_writer import LogManager
 
 load_dotenv()
 
@@ -168,6 +169,13 @@ def run_cli(repo, save_dir, sast, rule):
     # Chapter 8,9
     pr_procedure.generate_pr()
     pr_procedure.create_pr()
+    # for log
+    pr_number = pr_procedure.create_pr()
+    if pr_number:
+        pr_creation_data, repo_status_data = pr_procedure.generate_log_data(pr_number)
+        log_manager = LogManager()
+        log_manager.add_pr_log(**pr_creation_data)
+        log_manager.add_repo_log(**repo_status_data)
 
 if __name__ == '__main__':
     main()
