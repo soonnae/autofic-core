@@ -34,7 +34,7 @@ jobs:
       - name: Run ci_automation.py automatically
         env:
           GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPEN_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           USER_NAME: ${{ secrets.USER_NAME }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
