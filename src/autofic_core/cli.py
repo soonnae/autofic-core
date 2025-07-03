@@ -136,7 +136,7 @@ def run_cli(repo, save_dir, sast, rule):
     repo_url = repo.rstrip('/').replace('.git', '')
     secret_discord = os.getenv('DISCORD_WEBHOOK_URL')
     secret_slack = os.getenv('SLACK_WEBHOOK_URL')
-    token = os.getenv('GIT_TOKEN')
+    token = os.getenv('GITHUB_TOKEN')
     user_name = os.getenv('USER_NAME')
     slack_webhook = os.environ.get('SLACK_WEBHOOK_URL')
     discord_webhook = os.environ.get('DISCORD_WEBHOOK_URL')
