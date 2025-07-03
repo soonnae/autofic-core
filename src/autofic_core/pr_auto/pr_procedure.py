@@ -340,7 +340,7 @@ class PRProcedure:
         }
         repo_status_data = {
             "name": self.repo_name,
-            "url": f"https://github.com/{self.upstream_owner}/{self.repo_name}",
+            "repo_url": f"https://github.com/{self.upstream_owner}/{self.repo_name}",
             "vulnerabilities": getattr(self, 'vulnerabilities', 0)
         }
         return pr_creation_data, repo_status_data    

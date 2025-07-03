@@ -22,6 +22,8 @@ def save_log(data):
 # 클라이언트 전체 로그 가져옴
 @app.route('/log.json', methods=['GET'])
 def get_log():
+    if not os.path.exists(LOG_PATH):
+        save_log({"prs": [], "repos": []})
     return send_file(LOG_PATH)
 
 # 로그 전체 덮어씀

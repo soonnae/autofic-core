@@ -40,14 +40,14 @@ class LogManager:
         response.raise_for_status()
         return response.json()
 
-    def add_repo_status(self, name, url_, vulnerabilities):
+    def add_repo_status(self, name, repo_url, vulnerabilities):
         """
         repo 상태 기록
         """
         url = f"{self.api_base_url}/add_repo_status"
         payload = {
             "name": name,
-            "url": url_,
+            "repo_url": repo_url,
             "vulnerabilities": vulnerabilities
         }
         response = requests.post(url, json=payload)

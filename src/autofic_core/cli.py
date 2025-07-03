@@ -168,14 +168,13 @@ def run_cli(repo, save_dir, sast, rule):
     pr_procedure.current_main_branch()
     # Chapter 8,9
     pr_procedure.generate_pr()
-    pr_procedure.create_pr()
-    # for log
     pr_number = pr_procedure.create_pr()
+    # for log
     if pr_number:
         pr_creation_data, repo_status_data = pr_procedure.generate_log_data(pr_number)
         log_manager = LogManager()
         log_manager.add_pr_log(**pr_creation_data)
-        log_manager.add_repo_log(**repo_status_data)
+        log_manager.add_repo_status(**repo_status_data)
 
 if __name__ == '__main__':
     main()
