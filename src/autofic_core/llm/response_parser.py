@@ -69,11 +69,15 @@ def parse_response_and_save_patch(md_path: Path, output_dir: Path) -> Path:
     try:
         diff_content = extract_unified_diff(content)
         start_line, flat_path = parse_md_filename(md_path.name)
+
+        # 확장자 제거
+        flat_path_wo_ext = Path(flat_path).stem
+
         diff_content = fix_diff_header(diff_content, start_line)
     except Exception as e:
         raise RuntimeError(f"[PARSE ERROR] {md_path.name}: {e}")
 
-    patch_filename = f"patch_{start_line:03d}_{flat_path}.patch"
+    patch_filename = f"patch_{start_line:03d}_{flat_path_wo_ext}.patch"
     patch_path = output_dir / patch_filename
     save_patch_file(diff_content, patch_path)
 

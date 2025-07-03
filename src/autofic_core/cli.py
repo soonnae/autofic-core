@@ -12,7 +12,6 @@ from autofic_core.sast.semgrep_merger import merge_snippets_by_location
 from autofic_core.llm.prompt_generator import PromptGenerator
 from autofic_core.llm.llm_runner import LLMRunner, save_md_response
 from autofic_core.llm.response_parser import ResponseParser
-from autofic_core.patch.diff_generator import DiffGenerator
 from autofic_core.patch.diff_merger import DiffMerger
 from autofic_core.pr_auto.create_yml import AboutYml
 from autofic_core.pr_auto.env_encrypt import EnvEncrypy
@@ -114,14 +113,8 @@ def run_cli(repo, save_dir, sast, rule):
     result_dir = save_dir / "result"
     result_dir.mkdir(parents=True, exist_ok=True)
 
-    diff_generator = DiffGenerator(repo_dir=clone_path, diff_dir=diff_dir)
-    diffs = diff_generator.load_diffs()
-    if not diffs:
-        click.secho(f"\n[ WARN ] 적용할 diff 파일이 없습니다.\n", fg="yellow")
-        return
-
     click.echo("\nDiff 병합 및 파일 저장 시작\n")
-    diff_merger = DiffMerger(diffs=diffs, clone_path=clone_path, result_path=result_dir)
+    diff_merger = DiffMerger(diffs=list(diff_dir.glob("*.patch")), clone_path=clone_path, result_path=result_dir)
     diff_merger.merge_all()
 
     click.secho(f"\n[ SUCCESS ] 병합된 결과가 '{result_dir}'에 저장되었습니다.\n", fg="green")
@@ -136,7 +129,7 @@ def run_cli(repo, save_dir, sast, rule):
     repo_url = repo.rstrip('/').replace('.git', '')
     secret_discord = os.getenv('DISCORD_WEBHOOK_URL')
     secret_slack = os.getenv('SLACK_WEBHOOK_URL')
-    token = os.getenv('GIT_TOKEN')
+    token = os.getenv('GITHUB_TOKEN')
     user_name = os.getenv('USER_NAME')
     slack_webhook = os.environ.get('SLACK_WEBHOOK_URL')
     discord_webhook = os.environ.get('DISCORD_WEBHOOK_URL')
