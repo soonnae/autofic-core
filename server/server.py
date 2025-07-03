@@ -4,7 +4,8 @@ import json
 
 app = Flask(__name__)
 
-LOG_PATH = 'log.json'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_PATH = os.path.join(BASE_DIR, 'log.json')
 
 # log.json 없으면 기본 생성
 if not os.path.exists(LOG_PATH):
