@@ -1,0 +1,599 @@
+{
+    "version": "1.122.0",
+    "results": [
+        {
+            "check_id": "javascript.sequelize.security.audit.sequelize-injection-express.express-sequelize-injection",
+            "path": "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/core/appHandler.js",
+            "start": {
+                "line": 11,
+                "col": 21,
+                "offset": 391
+            },
+            "end": {
+                "line": 11,
+                "col": 26,
+                "offset": 396
+            },
+            "extra": {
+                "message": "Detected a sequelize statement that is tainted by user-input. This could lead to SQL injection if the variable is user-controlled and is not properly sanitized. In order to prevent SQL injection, it is recommended to use parameterized queries or prepared statements.",
+                "metadata": {
+                    "interfile": true,
+                    "references": [
+                        "https://sequelize.org/docs/v6/core-concepts/raw-queries/#replacements"
+                    ],
+                    "category": "security",
+                    "technology": [
+                        "express"
+                    ],
+                    "cwe": [
+                        "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+                    ],
+                    "owasp": [
+                        "A01:2017 - Injection",
+                        "A03:2021 - Injection"
+                    ],
+                    "cwe2022-top25": true,
+                    "cwe2021-top25": true,
+                    "subcategory": [
+                        "vuln"
+                    ],
+                    "likelihood": "HIGH",
+                    "impact": "HIGH",
+                    "confidence": "HIGH",
+                    "license": "Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license",
+                    "vulnerability_class": [
+                        "SQL Injection"
+                    ],
+                    "source": "https://semgrep.dev/r/javascript.sequelize.security.audit.sequelize-injection-express.express-sequelize-injection",
+                    "shortlink": "https://sg.run/gjoe"
+                },
+                "severity": "ERROR",
+                "fingerprint": "requires login",
+                "lines": "requires login",
+                "validation_state": "NO_VALIDATOR",
+                "engine_kind": "OSS"
+            }
+        },
+        {
+            "check_id": "javascript.express.security.audit.express-open-redirect.express-open-redirect",
+            "path": "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/core/appHandler.js",
+            "start": {
+                "line": 188,
+                "col": 16,
+                "offset": 3916
+            },
+            "end": {
+                "line": 188,
+                "col": 29,
+                "offset": 3929
+            },
+            "extra": {
+                "message": "The application redirects to a URL specified by user-supplied input `req` that is not validated. This could redirect users to malicious locations. Consider using an allow-list approach to validate URLs, or warn users they are being redirected to a third-party website.",
+                "metadata": {
+                    "technology": [
+                        "express"
+                    ],
+                    "references": [
+                        "https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html"
+                    ],
+                    "cwe": [
+                        "CWE-601: URL Redirection to Untrusted Site ('Open Redirect')"
+                    ],
+                    "category": "security",
+                    "owasp": [
+                        "A01:2021 - Broken Access Control"
+                    ],
+                    "subcategory": [
+                        "vuln"
+                    ],
+                    "likelihood": "HIGH",
+                    "impact": "MEDIUM",
+                    "confidence": "HIGH",
+                    "license": "Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license",
+                    "vulnerability_class": [
+                        "Open Redirect"
+                    ],
+                    "source": "https://semgrep.dev/r/javascript.express.security.audit.express-open-redirect.express-open-redirect",
+                    "shortlink": "https://sg.run/EpoP"
+                },
+                "severity": "WARNING",
+                "fingerprint": "requires login",
+                "lines": "requires login",
+                "validation_state": "NO_VALIDATOR",
+                "engine_kind": "OSS"
+            }
+        },
+        {
+            "check_id": "javascript.express.security.audit.express-third-party-object-deserialization.express-third-party-object-deserialization",
+            "path": "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/core/appHandler.js",
+            "start": {
+                "line": 218,
+                "col": 18,
+                "offset": 4504
+            },
+            "end": {
+                "line": 218,
+                "col": 81,
+                "offset": 4567
+            },
+            "extra": {
+                "message": "The following function call serialize.unserialize accepts user controlled data which can result in Remote Code Execution (RCE) through Object Deserialization. It is recommended to use secure data processing alternatives such as JSON.parse() and Buffer.from().",
+                "metadata": {
+                    "interfile": true,
+                    "technology": [
+                        "express"
+                    ],
+                    "category": "security",
+                    "cwe": [
+                        "CWE-502: Deserialization of Untrusted Data"
+                    ],
+                    "references": [
+                        "https://cheatsheetseries.owasp.org/cheatsheets/Deserialization_Cheat_Sheet.html"
+                    ],
+                    "source_rule_url": [
+                        "https://github.com/ajinabraham/njsscan/blob/75bfbeb9c8d72999e4d527dfa2548f7f0f3cc48a/njsscan/rules/semantic_grep/eval/eval_deserialize.yaml"
+                    ],
+                    "owasp": [
+                        "A08:2017 - Insecure Deserialization",
+                        "A08:2021 - Software and Data Integrity Failures"
+                    ],
+                    "cwe2022-top25": true,
+                    "cwe2021-top25": true,
+                    "subcategory": [
+                        "vuln"
+                    ],
+                    "likelihood": "HIGH",
+                    "impact": "HIGH",
+                    "confidence": "HIGH",
+                    "license": "Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license",
+                    "vulnerability_class": [
+                        "Insecure Deserialization "
+                    ],
+                    "source": "https://semgrep.dev/r/javascript.express.security.audit.express-third-party-object-deserialization.express-third-party-object-deserialization",
+                    "shortlink": "https://sg.run/8W5j"
+                },
+                "severity": "WARNING",
+                "fingerprint": "requires login",
+                "lines": "requires login",
+                "validation_state": "NO_VALIDATOR",
+                "engine_kind": "OSS"
+            }
+        },
+        {
+            "check_id": "javascript.express.security.audit.express-libxml-noent.express-libxml-noent",
+            "path": "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/core/appHandler.js",
+            "start": {
+                "line": 235,
+                "col": 42,
+                "offset": 5110
+            },
+            "end": {
+                "line": 235,
+                "col": 82,
+                "offset": 5150
+            },
+            "extra": {
+                "message": "The libxml library processes user-input with the `noent` attribute is set to `true` which can lead to being vulnerable to XML External Entities (XXE) type attacks. It is recommended to set `noent` to `false` when using this feature to ensure you are protected.",
+                "metadata": {
+                    "interfile": true,
+                    "references": [
+                        "https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html"
+                    ],
+                    "technology": [
+                        "express"
+                    ],
+                    "category": "security",
+                    "cwe": [
+                        "CWE-611: Improper Restriction of XML External Entity Reference"
+                    ],
+                    "owasp": [
+                        "A04:2017 - XML External Entities (XXE)",
+                        "A05:2021 - Security Misconfiguration"
+                    ],
+                    "cwe2022-top25": true,
+                    "cwe2021-top25": true,
+                    "subcategory": [
+                        "vuln"
+                    ],
+                    "likelihood": "HIGH",
+                    "impact": "HIGH",
+                    "confidence": "HIGH",
+                    "license": "Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license",
+                    "vulnerability_class": [
+                        "XML Injection"
+                    ],
+                    "source": "https://semgrep.dev/r/javascript.express.security.audit.express-libxml-noent.express-libxml-noent",
+                    "shortlink": "https://sg.run/Z75x"
+                },
+                "severity": "ERROR",
+                "fingerprint": "requires login",
+                "lines": "requires login",
+                "validation_state": "NO_VALIDATOR",
+                "engine_kind": "OSS"
+            }
+        },
+        {
+            "check_id": "javascript.express.security.audit.express-cookie-settings.express-cookie-session-default-name",
+            "path": "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/server.js",
+            "start": {
+                "line": 23,
+                "col": 9,
+                "offset": 633
+            },
+            "end": {
+                "line": 28,
+                "col": 3,
+                "offset": 742
+            },
+            "extra": {
+                "message": "Don’t use the default session cookie name Using the default session cookie name can open your app to attacks. The security issue posed is similar to X-Powered-By: a potential attacker can use it to fingerprint the server and target attacks accordingly.",
+                "metadata": {
+                    "cwe": [
+                        "CWE-522: Insufficiently Protected Credentials"
+                    ],
+                    "owasp": [
+                        "A02:2017 - Broken Authentication",
+                        "A04:2021 - Insecure Design"
+                    ],
+                    "source-rule-url": "https://expressjs.com/en/advanced/best-practice-security.html",
+                    "category": "security",
+                    "technology": [
+                        "express"
+                    ],
+                    "cwe2021-top25": true,
+                    "subcategory": [
+                        "vuln"
+                    ],
+                    "likelihood": "HIGH",
+                    "impact": "LOW",
+                    "confidence": "MEDIUM",
+                    "references": [
+                        "https://owasp.org/Top10/A04_2021-Insecure_Design"
+                    ],
+                    "license": "Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license",
+                    "vulnerability_class": [
+                        "Cryptographic Issues"
+                    ],
+                    "source": "https://semgrep.dev/r/javascript.express.security.audit.express-cookie-settings.express-cookie-session-default-name",
+                    "shortlink": "https://sg.run/1Z5x"
+                },
+                "severity": "WARNING",
+                "fingerprint": "requires login",
+                "lines": "requires login",
+                "validation_state": "NO_VALIDATOR",
+                "engine_kind": "OSS"
+            }
+        },
+        {
+            "check_id": "javascript.express.security.audit.express-cookie-settings.express-cookie-session-no-domain",
+            "path": "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/server.js",
+            "start": {
+                "line": 23,
+                "col": 9,
+                "offset": 633
+            },
+            "end": {
+                "line": 28,
+                "col": 3,
+                "offset": 742
+            },
+            "extra": {
+                "message": "Default session middleware settings: `domain` not set. It indicates the domain of the cookie; use it to compare against the domain of the server in which the URL is being requested. If they match, then check the path attribute next.",
+                "metadata": {
+                    "cwe": [
+                        "CWE-522: Insufficiently Protected Credentials"
+                    ],
+                    "owasp": [
+                        "A02:2017 - Broken Authentication",
+                        "A04:2021 - Insecure Design"
+                    ],
+                    "source-rule-url": "https://expressjs.com/en/advanced/best-practice-security.html",
+                    "category": "security",
+                    "technology": [
+                        "express"
+                    ],
+                    "cwe2021-top25": true,
+                    "subcategory": [
+                        "vuln"
+                    ],
+                    "likelihood": "HIGH",
+                    "impact": "LOW",
+                    "confidence": "MEDIUM",
+                    "references": [
+                        "https://owasp.org/Top10/A04_2021-Insecure_Design"
+                    ],
+                    "license": "Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license",
+                    "vulnerability_class": [
+                        "Cryptographic Issues"
+                    ],
+                    "source": "https://semgrep.dev/r/javascript.express.security.audit.express-cookie-settings.express-cookie-session-no-domain",
+                    "shortlink": "https://sg.run/rd41"
+                },
+                "severity": "WARNING",
+                "fingerprint": "requires login",
+                "lines": "requires login",
+                "validation_state": "NO_VALIDATOR",
+                "engine_kind": "OSS"
+            }
+        },
+        {
+            "check_id": "javascript.express.security.audit.express-cookie-settings.express-cookie-session-no-expires",
+            "path": "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/server.js",
+            "start": {
+                "line": 23,
+                "col": 9,
+                "offset": 633
+            },
+            "end": {
+                "line": 28,
+                "col": 3,
+                "offset": 742
+            },
+            "extra": {
+                "message": "Default session middleware settings: `expires` not set. Use it to set expiration date for persistent cookies.",
+                "metadata": {
+                    "cwe": [
+                        "CWE-522: Insufficiently Protected Credentials"
+                    ],
+                    "owasp": [
+                        "A02:2017 - Broken Authentication",
+                        "A04:2021 - Insecure Design"
+                    ],
+                    "source-rule-url": "https://expressjs.com/en/advanced/best-practice-security.html",
+                    "category": "security",
+                    "technology": [
+                        "express"
+                    ],
+                    "cwe2021-top25": true,
+                    "subcategory": [
+                        "vuln"
+                    ],
+                    "likelihood": "HIGH",
+                    "impact": "LOW",
+                    "confidence": "MEDIUM",
+                    "references": [
+                        "https://owasp.org/Top10/A04_2021-Insecure_Design"
+                    ],
+                    "license": "Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license",
+                    "vulnerability_class": [
+                        "Cryptographic Issues"
+                    ],
+                    "source": "https://semgrep.dev/r/javascript.express.security.audit.express-cookie-settings.express-cookie-session-no-expires",
+                    "shortlink": "https://sg.run/N4eG"
+                },
+                "severity": "WARNING",
+                "fingerprint": "requires login",
+                "lines": "requires login",
+                "validation_state": "NO_VALIDATOR",
+                "engine_kind": "OSS"
+            }
+        },
+        {
+            "check_id": "javascript.express.security.audit.express-cookie-settings.express-cookie-session-no-httponly",
+            "path": "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/server.js",
+            "start": {
+                "line": 23,
+                "col": 9,
+                "offset": 633
+            },
+            "end": {
+                "line": 28,
+                "col": 3,
+                "offset": 742
+            },
+            "extra": {
+                "message": "Default session middleware settings: `httpOnly` not set. It ensures the cookie is sent only over HTTP(S), not client JavaScript, helping to protect against cross-site scripting attacks.",
+                "metadata": {
+                    "cwe": [
+                        "CWE-522: Insufficiently Protected Credentials"
+                    ],
+                    "owasp": [
+                        "A02:2017 - Broken Authentication",
+                        "A04:2021 - Insecure Design"
+                    ],
+                    "source-rule-url": "https://expressjs.com/en/advanced/best-practice-security.html",
+                    "category": "security",
+                    "technology": [
+                        "express"
+                    ],
+                    "cwe2021-top25": true,
+                    "subcategory": [
+                        "vuln"
+                    ],
+                    "likelihood": "HIGH",
+                    "impact": "LOW",
+                    "confidence": "MEDIUM",
+                    "references": [
+                        "https://owasp.org/Top10/A04_2021-Insecure_Design"
+                    ],
+                    "license": "Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license",
+                    "vulnerability_class": [
+                        "Cryptographic Issues"
+                    ],
+                    "source": "https://semgrep.dev/r/javascript.express.security.audit.express-cookie-settings.express-cookie-session-no-httponly",
+                    "shortlink": "https://sg.run/ydBO"
+                },
+                "severity": "WARNING",
+                "fingerprint": "requires login",
+                "lines": "requires login",
+                "validation_state": "NO_VALIDATOR",
+                "engine_kind": "OSS"
+            }
+        },
+        {
+            "check_id": "javascript.express.security.audit.express-cookie-settings.express-cookie-session-no-path",
+            "path": "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/server.js",
+            "start": {
+                "line": 23,
+                "col": 9,
+                "offset": 633
+            },
+            "end": {
+                "line": 28,
+                "col": 3,
+                "offset": 742
+            },
+            "extra": {
+                "message": "Default session middleware settings: `path` not set. It indicates the path of the cookie; use it to compare against the request path. If this and domain match, then send the cookie in the request.",
+                "metadata": {
+                    "cwe": [
+                        "CWE-522: Insufficiently Protected Credentials"
+                    ],
+                    "owasp": [
+                        "A02:2017 - Broken Authentication",
+                        "A04:2021 - Insecure Design"
+                    ],
+                    "source-rule-url": "https://expressjs.com/en/advanced/best-practice-security.html",
+                    "category": "security",
+                    "technology": [
+                        "express"
+                    ],
+                    "cwe2021-top25": true,
+                    "subcategory": [
+                        "vuln"
+                    ],
+                    "likelihood": "HIGH",
+                    "impact": "LOW",
+                    "confidence": "MEDIUM",
+                    "references": [
+                        "https://owasp.org/Top10/A04_2021-Insecure_Design"
+                    ],
+                    "license": "Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license",
+                    "vulnerability_class": [
+                        "Cryptographic Issues"
+                    ],
+                    "source": "https://semgrep.dev/r/javascript.express.security.audit.express-cookie-settings.express-cookie-session-no-path",
+                    "shortlink": "https://sg.run/b7pd"
+                },
+                "severity": "WARNING",
+                "fingerprint": "requires login",
+                "lines": "requires login",
+                "validation_state": "NO_VALIDATOR",
+                "engine_kind": "OSS"
+            }
+        },
+        {
+            "check_id": "javascript.express.security.audit.express-cookie-settings.express-cookie-session-no-secure",
+            "path": "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/server.js",
+            "start": {
+                "line": 23,
+                "col": 9,
+                "offset": 633
+            },
+            "end": {
+                "line": 28,
+                "col": 3,
+                "offset": 742
+            },
+            "extra": {
+                "message": "Default session middleware settings: `secure` not set. It ensures the browser only sends the cookie over HTTPS.",
+                "metadata": {
+                    "cwe": [
+                        "CWE-522: Insufficiently Protected Credentials"
+                    ],
+                    "owasp": [
+                        "A02:2017 - Broken Authentication",
+                        "A04:2021 - Insecure Design"
+                    ],
+                    "source-rule-url": "https://expressjs.com/en/advanced/best-practice-security.html",
+                    "category": "security",
+                    "technology": [
+                        "express"
+                    ],
+                    "cwe2021-top25": true,
+                    "subcategory": [
+                        "vuln"
+                    ],
+                    "likelihood": "HIGH",
+                    "impact": "LOW",
+                    "confidence": "MEDIUM",
+                    "references": [
+                        "https://owasp.org/Top10/A04_2021-Insecure_Design"
+                    ],
+                    "license": "Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license",
+                    "vulnerability_class": [
+                        "Cryptographic Issues"
+                    ],
+                    "source": "https://semgrep.dev/r/javascript.express.security.audit.express-cookie-settings.express-cookie-session-no-secure",
+                    "shortlink": "https://sg.run/9oKz"
+                },
+                "severity": "WARNING",
+                "fingerprint": "requires login",
+                "lines": "requires login",
+                "validation_state": "NO_VALIDATOR",
+                "engine_kind": "OSS"
+            }
+        },
+        {
+            "check_id": "javascript.express.security.audit.express-session-hardcoded-secret.express-session-hardcoded-secret",
+            "path": "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/server.js",
+            "start": {
+                "line": 24,
+                "col": 3,
+                "offset": 645
+            },
+            "end": {
+                "line": 24,
+                "col": 25,
+                "offset": 667
+            },
+            "extra": {
+                "message": "A hard-coded credential was detected. It is not recommended to store credentials in source-code, as this risks secrets being leaked and used by either an internal or external malicious adversary. It is recommended to use environment variables to securely provide credentials or retrieve credentials from a secure vault or HSM (Hardware Security Module).",
+                "metadata": {
+                    "interfile": true,
+                    "cwe": [
+                        "CWE-798: Use of Hard-coded Credentials"
+                    ],
+                    "references": [
+                        "https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html"
+                    ],
+                    "owasp": [
+                        "A07:2021 - Identification and Authentication Failures"
+                    ],
+                    "category": "security",
+                    "technology": [
+                        "express",
+                        "secrets"
+                    ],
+                    "cwe2022-top25": true,
+                    "cwe2021-top25": true,
+                    "subcategory": [
+                        "vuln"
+                    ],
+                    "likelihood": "HIGH",
+                    "impact": "HIGH",
+                    "confidence": "HIGH",
+                    "license": "Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license",
+                    "vulnerability_class": [
+                        "Hard-coded Secrets"
+                    ],
+                    "source": "https://semgrep.dev/r/javascript.express.security.audit.express-session-hardcoded-secret.express-session-hardcoded-secret",
+                    "shortlink": "https://sg.run/LYvG"
+                },
+                "severity": "WARNING",
+                "fingerprint": "requires login",
+                "lines": "requires login",
+                "validation_state": "NO_VALIDATOR",
+                "engine_kind": "OSS"
+            }
+        }
+    ],
+    "errors": [],
+    "paths": {
+        "scanned": [
+            "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/config/db.js",
+            "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/config/server.js",
+            "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/config/vulns.js",
+            "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/core/appHandler.js",
+            "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/core/authHandler.js",
+            "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/core/passport.js",
+            "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/models/index.js",
+            "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/models/product.js",
+            "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/models/user.js",
+            "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/routes/app.js",
+            "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/routes/main.js",
+            "/Users/kim-eunsol/Desktop/autofic/autofic-core/C:\\testfile/repo/server.js"
+        ]
+    },
+    "skipped_rules": []
+}
