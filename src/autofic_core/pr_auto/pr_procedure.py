@@ -176,7 +176,8 @@ class PRProcedure:
         self.json_path = '../sast/before.json'
         with open(self.json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        subprocess.run(['git', 'commit', '-m', f"[Autofic] {len(data.get('results', []))} malicious code detected!!"], check=True)
+        self.vulnerabilities = len(data.get("results",[]))
+        subprocess.run(['git', 'commit', '-m', f"[Autofic] {self.vulnerabilities} malicious code detected!!"], check=True)
         try:
             subprocess.run(['git', 'push', 'origin', self.branch_name], check=True)
             return True
@@ -286,6 +287,7 @@ class PRProcedure:
         pr_resp = requests.post(pr_url, json=data_post, headers=headers)
         if pr_resp.status_code in (201, 202):
             pr_json = pr_resp.json()
+            return pr_number            
         else:
             return
 
@@ -366,7 +368,22 @@ class PRProcedure:
         md.append("All vulnerable code paths have been refactored to use parameterized queries or input sanitization as recommended in the references above. Please refer to the diff for exact code changes.\n")
         md.append("---\n")
         return "\n".join(md)
-    
+
+    def generate_log_data(self, pr_number):
+        today = datetime.date.today().isoformat()
+        pr_creation_data = {
+            "date": today,
+            "repo": f"{self.user_name}/{self.repo_name}",
+            "pr_number": pr_number,
+        }
+        repo_status_data = {
+            "name": self.repo_name,
+            "repo_url": f"https://github.com/{self.upstream_owner}/{self.repo_name}",
+            "vulnerabilities": getattr(self, 'vulnerabilities', 0)
+        }
+        return pr_creation_data, repo_status_data    
+
     def contains_all(self, text, *keywords):
         """ Check if all keywords are present in the text."""
         return all(k in text for k in keywords)
+
