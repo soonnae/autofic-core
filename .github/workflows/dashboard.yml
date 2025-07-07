@@ -1,8 +1,9 @@
 name: Update dashboard pages
 
 on:
-  push:
-  pull_request:
+  schedule:
+    - cron: '00 22 * * *'  # 매일 오전 7시
+  workflow_dispatch:
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -30,8 +31,6 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Generate dashboard_data.json
-        env:
-          LOG_API_URL: ${{ secrets.LOG_API_URL }}
         run: |
           python src/autofic_core/pages/log_to_dashboard.py
 
