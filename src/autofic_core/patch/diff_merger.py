@@ -2,26 +2,62 @@ from pathlib import Path
 from typing import List, Dict
 from collections import defaultdict
 import shutil
+import re
+
+# 예: patch_023_core_appHandler.patch → (23, 'core_appHandler')
+PATCH_FILENAME_PATTERN = re.compile(r"patch_(\d{3})_(.+)\.patch$")
+
 
 class DiffMerger:
-    def __init__(self, diffs: List[dict], clone_path: Path, result_path: Path):
-        self.diffs = diffs
+    def __init__(self, diffs: List[Path], clone_path: Path, result_path: Path):
+        self.diffs = diffs  # patch 파일 경로 리스트
         self.clone_path = clone_path
         self.result_path = result_path
 
+    def parse_patch_filename(self, path: Path) -> tuple[int, str]:
+        match = PATCH_FILENAME_PATTERN.match(path.name)
+        if not match:
+            raise ValueError(f"[PARSE ERROR] 잘못된 patch 파일명 형식: {path.name}")
+        start_line = int(match.group(1))
+        flat_filename = match.group(2)
+        return start_line, flat_filename
 
-    # 파일명 기준 diff 그룹핑, 그룹 내에서는 start_line 기준으로 내림차순 정렬
+    def flatten_to_relative_path(self, flat_name: str) -> Path:
+        parts = flat_name.split("_")
+        return Path(*parts[:-1]) / parts[-1]
+
+    def try_find_source_file(self, relative_path: Path) -> Path | None:
+        for ext in ['.js', '.py', '.ts', '.java']:
+            candidate = (self.clone_path / relative_path).with_suffix(ext)
+            if candidate.exists():
+                return candidate
+        return None
+
     def group_and_sort_diffs(self) -> Dict[str, List[dict]]:
         grouped = defaultdict(list)
-        for diff in self.diffs:
-            grouped[diff["flat_filename"]].append(diff)
+        for patch_path in self.diffs:
+            try:
+                start_line, flat_filename = self.parse_patch_filename(patch_path)
+                relative_path = self.flatten_to_relative_path(flat_filename)
+                source_path = self.try_find_source_file(relative_path)
+
+                if not source_path:
+                    print(f"[ WARN ] 원본 파일이 존재하지 않음: {self.clone_path / relative_path}")
+                    continue
+
+                grouped[flat_filename].append({
+                    "start_line": start_line,
+                    "flat_filename": flat_filename,
+                    "source_path": source_path,
+                    "diff_content": patch_path.read_text(encoding="utf-8")
+                })
+            except Exception as e:
+                print(f"[ ERROR ] patch 파일 처리 실패: {patch_path.name} - {e}")
 
         for filename in grouped:
-            grouped[filename].sort(key=lambda d: d["start_line"], reverse=True)
+            grouped[filename].sort(key=lambda d: d["start_line"])
         return grouped
 
-
-    # 원본 파일들을 결과 경로에 복사하여 병합 준비
     def prepare_target_files(self, grouped_diffs: Dict[str, List[dict]]) -> Dict[str, Path]:
         filename_to_target_path = {}
 
@@ -37,29 +73,23 @@ class DiffMerger:
 
         return filename_to_target_path
 
+    def apply_unified_diff(self, file_path: Path, diff_text: str):
+        import difflib
 
-    # 특정 파일의 특정 라인 범위를 새로운 코드로 덮어쓰기
-    def merge_diff_to_file(self, file_path: Path, start_line: int, new_code: str, end_line: int = None) -> None:
-        lines = file_path.read_text(encoding="utf-8").splitlines()
-        new_code_lines = new_code.splitlines()
+        original = file_path.read_text(encoding="utf-8").splitlines(keepends=True)
+        patched = list(difflib.restore(difflib.ndiff(original, diff_text.splitlines(keepends=True)), 2))
+        file_path.write_text("".join(patched), encoding="utf-8")
 
-        if end_line is None:
-            end_line = start_line + len(new_code_lines) - 1
-
-        merged_lines = lines[:start_line - 1] + new_code_lines + lines[end_line:]
-        file_path.write_text("\n".join(merged_lines), encoding="utf-8")
-
-
-    # 위 3단계를 차례로 실행해 전체 diff 병합 완료
     def merge_all(self) -> None:
         grouped = self.group_and_sort_diffs()
         target_paths = self.prepare_target_files(grouped)
-
+        
         for filename, diffs in grouped.items():
             target_path = target_paths[filename]
-            for diff in diffs:
-                self.merge_diff_to_file(
-                    file_path=target_path,
-                    start_line=diff["start_line"],
-                    new_code=diff["diff_content"]
-                )
+            combined_diff = "\n".join(diff["diff_content"] for diff in diffs)
+
+        try:
+            self.apply_unified_diff(file_path=target_path, diff_text=combined_diff)
+        except Exception as e:
+            print(f"[ ERROR ] diff apply failed on {target_path.name}: {e}")
+
