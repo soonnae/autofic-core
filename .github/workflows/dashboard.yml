@@ -5,9 +5,6 @@ on:
     - cron: '00 22 * * *'  # 매일 오전 7시
   workflow_dispatch:
 
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
-
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
