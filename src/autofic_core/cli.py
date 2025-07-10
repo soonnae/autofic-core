@@ -2,6 +2,8 @@ import click
 import json
 import time
 import os
+from pyfiglet import Figlet
+from rich.console import Console
 from dotenv import load_dotenv
 from pathlib import Path
 from autofic_core.utils.progress_utils import create_progress
@@ -21,8 +23,41 @@ from autofic_core.pr_auto.pr_procedure import PRProcedure
 from autofic_core.pages.log_writer import LogManager
 from autofic_core.cli_options import (explain_option, common_options, sast_options, llm_option, pr_option)
 
-load_dotenv()
+load_dotenv()    
 
+console = Console()
+
+f = Figlet(font="slant")
+ascii_art = f.renderText("AutoFiC")
+
+console.print(f"[magenta]{ascii_art}[/magenta]")
+
+def print_divider(title) :
+    console.print(f"\n[bold magenta]{'-'*20} [ {title} ] {'-'*20}[/bold magenta]\n")
+
+def print_summary(
+    repo_url: str,
+    detected_issues_count: int,
+    output_dir: str,
+    #pr_status: str,
+    response_files: list   
+):
+
+    print_divider("AutoFiC 작업 요약")
+
+    console.print(f"✔️ [bold]분석 대상 저장소:[/bold] {repo_url}")
+    console.print(f"✔️ [bold]취약점이 탐지된 파일:[/bold] {detected_issues_count} 개")
+    if response_files:
+        first_file = Path(response_files[0]).name
+        last_file = Path(response_files[-1]).name
+        console.print(f"✔️ [bold]저장된 응답 파일:[/bold] {first_file} ~ {last_file}")
+    else:
+        console.print(f"✔️ [bold]저장된 응답 파일:[/bold] 없음")
+
+    #console.print(f"✔️ [bold]PR 여부:[/bold] {pr_status}")
+
+    console.print(f"\n[bold magenta]{'━'*64}[/bold magenta]\n")
+    
 @click.command()
 @explain_option
 @common_options
@@ -76,6 +111,7 @@ def print_help_message():
     """)
 
 def run_sast(clone_path, save_dir, rule):
+    print_divider("SAST 분석 단계")
     click.echo("\nSemgrep 분석 시작\n")
     with create_progress() as progress:
         task = progress.add_task("[cyan]Semgrep 분석 진행 중...", total=100)
@@ -106,6 +142,7 @@ def run_sast(clone_path, save_dir, rule):
 
 
 def run_llm(semgrep_result_path, clone_path, save_dir):
+    print_divider("LLM 응답 생성 단계")
     prompts = PromptGenerator().from_semgrep_file(
         semgrep_result_path,
         base_dir=clone_path
@@ -128,6 +165,7 @@ def run_llm(semgrep_result_path, clone_path, save_dir):
 
 
 def clone_repository(repo, save_dir):
+    print_divider("저장소 다운로드 단계")
     handler = GitHubRepoHandler(repo_url=repo)
 
     if handler.needs_fork:
@@ -157,7 +195,25 @@ def run_cli(repo, save_dir, sast, rule, llm, pr):
                 return
             semgrep_result_path = sast_path
 
-        run_llm(semgrep_result_path, clone_path, save_dir)
+        llm_output_dir = run_llm(semgrep_result_path, clone_path, save_dir)
+
+        response_files = sorted([f.name for f in llm_output_dir.glob("response_*.md")])
+
+        # 탐지된 파일 수로 교체
+        with open(semgrep_result_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        unique_file_paths = set()
+        for result in data.get("results", []):
+            if "path" in result:
+                unique_file_paths.add(result["path"])
+
+        print_summary(
+            repo_url=repo,
+            detected_issues_count=len(unique_file_paths),
+            output_dir=str(llm_output_dir),
+            #pr_status="생성 완료",
+            response_files=response_files
+        )       
 
     if pr:
         # PR 자동화
