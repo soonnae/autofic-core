@@ -8,10 +8,13 @@ from dotenv import load_dotenv
 
 from autofic_core.utils.progress_utils import create_progress
 from autofic_core.download.github_repo_handler import GitHubRepoHandler
+from autofic_core.sast.snippet import BaseSnippet 
 from autofic_core.sast.semgrep.runner import SemgrepRunner
 from autofic_core.sast.semgrep.preprocessor import SemgrepPreprocessor
 from autofic_core.sast.codeql.runner import CodeQLRunner
 from autofic_core.sast.codeql.preprocessor import CodeQLPreprocessor
+from autofic_core.sast.snykcode.runner import SnykCodeRunner
+from autofic_core.sast.snykcode.preprocessor import SnykCodePreprocessor
 from autofic_core.sast.merger import merge_snippets_by_file
 from autofic_core.llm.prompt_generator import PromptGenerator
 from autofic_core.llm.llm_runner import LLMRunner, save_md_response
@@ -173,6 +176,43 @@ class SASTAnalyzer:
 
             return merged_path
 
+        if self.tool == "snykcode":
+            console.print("\nSnykCode 분석 시작\n")
+            with create_progress() as progress:
+                task = progress.add_task("[cyan]SnykCode 분석 진행 중...", total=100)
+                for _ in range(100):
+                    progress.update(task, advance=1)
+                    time.sleep(0.01)
+
+                snykcode_runner = SnykCodeRunner(repo_path=str(self.repo_path))
+                snykcode_result_obj = snykcode_runner.run_snykcode()
+                progress.update(task, completed=100)
+
+            sast_dir = self.save_dir / "sast"
+            sast_dir.mkdir(parents=True, exist_ok=True)
+            self.result_path = sast_dir / "before.json"
+
+            SnykCodePreprocessor.save_json_file(
+                json.loads(snykcode_result_obj.stdout),
+                self.result_path
+            )
+
+            console.print(f"\n[ SUCCESS ] SnykCode 결과 저장 완료 (로그) →  {self.result_path}\n", style="green")
+
+            snippets = SnykCodePreprocessor.preprocess(
+                input_json_path=str(self.result_path),
+                base_dir=str(self.repo_path)
+            )
+            merged_snippets = merge_snippets_by_file(snippets)
+
+            merged_path = sast_dir / "merged_snippets.json"
+            with open(merged_path, "w", encoding="utf-8") as f:
+                json.dump([snippet.model_dump() for snippet in merged_snippets], f, indent=2, ensure_ascii=False)
+
+            console.print(f"[ SUCCESS ] 병합된 스니펫 저장 완료 (로그) → {merged_path}\n", style="green")
+
+            return merged_path
+
     def save_snippets(self, merged_snippets_path: Path):
         with open(merged_snippets_path, "r", encoding="utf-8") as f:
             merged_snippets = json.load(f)
@@ -181,12 +221,19 @@ class SASTAnalyzer:
         snippets_dir.mkdir(parents=True, exist_ok=True)
 
         for snippet_data in merged_snippets:
-            filename_base = snippet_data.get("path", "unknown").replace("\\", "_").replace("/", "_")
+            if isinstance(snippet_data, dict):
+                snippet_obj = BaseSnippet(**snippet_data)
+            elif isinstance(snippet_data, BaseSnippet):
+                snippet_obj = snippet_data
+            else:
+                raise TypeError(f"[ ERROR ] 알 수 없는 snippet 형식: {type(snippet_data)}")
+            
+            filename_base = snippet_obj.path.replace("\\", "_").replace("/", "_")
             filename = f"snippet_{filename_base}.json"
             path = snippets_dir / filename
 
             with open(path, "w", encoding="utf-8") as f_out:
-                json.dump(snippet_data.get("snippet", ""), f_out, indent=2, ensure_ascii=False)
+                json.dump(snippet_obj.snippet, f_out, indent=2, ensure_ascii=False)
 
         console.print(f"[ SUCCESS ] 스니펫 저장 완료 (로그) → {snippets_dir}\n", style="green")
 
@@ -211,6 +258,10 @@ class LLMProcessor:
             )
         elif self.tool == "codeql":
             file_snippets = CodeQLPreprocessor.preprocess(
+                str(self.sast_result_path), base_dir=str(self.repo_path)
+            )
+        elif self.tool == "snykcode":
+            file_snippets = SnykCodePreprocessor.preprocess(
                 str(self.sast_result_path), base_dir=str(self.repo_path)
             )
         else:

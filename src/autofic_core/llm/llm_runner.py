@@ -4,7 +4,6 @@ from pathlib import Path
 from openai import OpenAI
 from dotenv import load_dotenv
 from autofic_core.errors import LLMExecutionError
-from autofic_core.sast.semgrep.preprocessor import SemgrepPreprocessor
 from autofic_core.sast.merger import merge_snippets_by_file
 from autofic_core.llm.prompt_generator import PromptGenerator, GeneratedPrompt
 
@@ -64,6 +63,8 @@ def run_llm_for_semgrep_results(
         from autofic_core.sast.semgrep.preprocessor import SemgrepPreprocessor as Preprocessor
     elif tool == "codeql":
         from autofic_core.sast.codeql.preprocessor import CodeQLPreprocessor as Preprocessor
+    elif tool == "snykcode":
+        from autofic_core.sast.snykcode.preprocessor import SnykCodePreprocessor as Preprocessor
     else:
         raise ValueError(f"지원되지 않는 SAST 도구: {tool}")
     

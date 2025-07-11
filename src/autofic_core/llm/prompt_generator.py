@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from autofic_core.sast.snippet import BaseSnippet 
 from autofic_core.sast.semgrep.preprocessor import SemgrepPreprocessor
 from autofic_core.sast.codeql.preprocessor import CodeQLPreprocessor
+from autofic_core.sast.snykcode.preprocessor import SnykCodePreprocessor
 from autofic_core.sast.merger import merge_snippets_by_file
 from autofic_core.errors import (
     PromptGenerationException,
@@ -107,10 +108,10 @@ class PromptGenerator:
             return SemgrepPreprocessor
         elif tool == "codeql":
             return CodeQLPreprocessor
+        elif tool == "snykcode":
+            return SnykCodePreprocessor
         # elif tool == "eslint":
         #     return ESLintPreprocessor
-        # elif tool == "snykcode":
-        #     return SnykPreprocessor
         else:
             raise ValueError(f"[ERROR] 지원하지 않는 도구입니다: {tool}")
         
