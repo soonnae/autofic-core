@@ -33,6 +33,10 @@ class CodeQLPreprocessor:
                             if "cwe-" in m
                         ],
                         "references": [rule.get("helpUri")] if rule.get("helpUri") else [],
+                        "level": (
+                            rule.get("defaultConfiguration", {}).get("level")
+                            or rule.get("properties", {}).get("problem.severity", "UNKNOWN")
+                        )
                     }
 
         processed: List[BaseSnippet] = []
@@ -51,6 +55,14 @@ class CodeQLPreprocessor:
 
                 lines = []
                 snippet = ""
+                
+                rule_id = res.get("ruleId")
+                meta = rule_metadata.get(rule_id, {}) if rule_id else {}
+                
+                level = res.get("level") or meta.get("level", "UNKNOWN")
+                if isinstance(level, list):
+                    level = level[0] if level else "UNKNOWN"
+                severity = str(level).upper()
 
                 try:
                     if os.path.exists(full_path):
@@ -73,9 +85,6 @@ class CodeQLPreprocessor:
                 except Exception:
                     continue
 
-                rule_id = res.get("ruleId")
-                meta = rule_metadata.get(rule_id, {})
-
                 processed.append(BaseSnippet(
                     input="".join(lines),
                     snippet=snippet.strip(),
@@ -84,7 +93,7 @@ class CodeQLPreprocessor:
                     start_line=start_line,
                     end_line=end_line,
                     message=res.get("message", {}).get("text", ""),
-                    severity=res.get("level", "UNKNOWN").upper(),
+                    severity=severity, 
                     vulnerability_class=[rule_id] if rule_id else [],
                     cwe=meta.get("cwe", []),
                     references=meta.get("references", [])

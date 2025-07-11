@@ -29,8 +29,8 @@ def merge_snippets_by_file(snippets: List[BaseSnippet]) -> List[BaseSnippet]:
 
         severity_order = {"INFO": 0, "WARNING": 1, "ERROR": 2}
         severity = max(
-            (s.severity for s in group),
-            key=lambda x: severity_order.get(x.upper(), -1),
+            (str(s.severity).upper() for s in group if s.severity),
+            key=lambda x: severity_order.get(x, -1),
             default=""
         )
         merged_snippets.append(BaseSnippet(

@@ -251,22 +251,10 @@ class LLMProcessor:
         print_divider("LLM 응답 생성 단계")
 
         prompt_generator = PromptGenerator()
-
-        if self.tool == "semgrep":
-            file_snippets = SemgrepPreprocessor.preprocess(
-                str(self.sast_result_path), base_dir=str(self.repo_path)
-            )
-        elif self.tool == "codeql":
-            file_snippets = CodeQLPreprocessor.preprocess(
-                str(self.sast_result_path), base_dir=str(self.repo_path)
-            )
-        elif self.tool == "snykcode":
-            file_snippets = SnykCodePreprocessor.preprocess(
-                str(self.sast_result_path), base_dir=str(self.repo_path)
-            )
-        else:
-            raise ValueError(f"지원되지 않는 SAST 도구: {self.tool}")
-        
+        merged_path = self.save_dir / "sast" / "merged_snippets.json"
+        with open(merged_path, "r", encoding="utf-8") as f:
+            merged_data = json.load(f)
+        file_snippets = [BaseSnippet(**item) for item in merged_data]
         prompts = prompt_generator.generate_prompts(file_snippets)
 
         llm = LLMRunner()

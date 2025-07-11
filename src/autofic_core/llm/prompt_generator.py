@@ -102,32 +102,6 @@ class PromptGenerator:
             prompts.append(self.generate_prompt(snippet))
         return prompts
 
-
-    def get_preprocessor(self, tool: str):
-        if tool == "semgrep":
-            return SemgrepPreprocessor
-        elif tool == "codeql":
-            return CodeQLPreprocessor
-        elif tool == "snykcode":
-            return SnykCodePreprocessor
-        # elif tool == "eslint":
-        #     return ESLintPreprocessor
-        else:
-            raise ValueError(f"[ERROR] 지원하지 않는 도구입니다: {tool}")
-        
-    def from_sast_file(self, sast_result_path: str, base_dir: str = ".", tool: str = "semgrep") -> List[GeneratedPrompt]:
-        try:
-            preprocessor = self.get_preprocessor(tool)
-            file_snippets = preprocessor.preprocess(sast_result_path, base_dir=base_dir)
-            merged_snippets = merge_snippets_by_file(file_snippets)
-            return self.generate_prompts(merged_snippets)
-
-        except Exception:
-            import traceback
-            print("[ DEBUG ] PromptGenerator.from_sast_file() 예외 발생:")
-            traceback.print_exc()
-            raise
-
     def get_unique_file_paths(self, file_snippets: List[BaseSnippet]) -> List[str]:
         paths = set()
         for idx, snippet in enumerate(file_snippets):
