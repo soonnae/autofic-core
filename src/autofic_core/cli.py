@@ -8,9 +8,9 @@ from dotenv import load_dotenv
 
 from autofic_core.utils.progress_utils import create_progress
 from autofic_core.download.github_repo_handler import GitHubRepoHandler
-from autofic_core.sast.semgrep_runner import SemgrepRunner
-from autofic_core.sast.semgrep_preprocessor import SemgrepPreprocessor, SemgrepFileSnippet
-from autofic_core.sast.semgrep_merger import merge_snippets_by_file
+from autofic_core.sast.semgrep.runner import SemgrepRunner
+from autofic_core.sast.semgrep.preprocessor import SemgrepPreprocessor
+from autofic_core.sast.semgrep.merger import merge_snippets_by_file
 from autofic_core.llm.prompt_generator import PromptGenerator
 from autofic_core.llm.llm_runner import LLMRunner, save_md_response
 from autofic_core.llm.response_parser import ResponseParser

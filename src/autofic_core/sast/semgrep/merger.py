@@ -1,9 +1,9 @@
 from collections import defaultdict
 from typing import List
-from autofic_core.sast.semgrep_preprocessor import SemgrepFileSnippet
+from autofic_core.sast.semgrep.preprocessor import BaseSnippet
 
 
-def merge_snippets_by_file(snippets: List[SemgrepFileSnippet]) -> List[SemgrepFileSnippet]:
+def merge_snippets_by_file(snippets: List[BaseSnippet]) -> List[BaseSnippet]:
     grouped = defaultdict(list)
 
     for snippet in snippets:
@@ -33,7 +33,7 @@ def merge_snippets_by_file(snippets: List[SemgrepFileSnippet]) -> List[SemgrepFi
             default=""
         )
 
-        merged_snippets.append(SemgrepFileSnippet(
+        merged_snippets.append(BaseSnippet(
             input=base.input,
             idx=None,
             start_line=start_line,

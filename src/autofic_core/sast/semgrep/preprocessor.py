@@ -1,23 +1,8 @@
-# ✅ semgrep_preprocessor.py
-from pydantic import BaseModel, Field
-from typing import List, Optional
+import os
 import json
 from pathlib import Path
-
-
-class SemgrepFileSnippet(BaseModel):
-    input: str
-    idx: Optional[int] = None
-    start_line: int
-    end_line: int
-    snippet: Optional[str] = None
-    message: str = ""
-    vulnerability_class: List[str] = Field(default_factory=list)
-    cwe: List[str] = Field(default_factory=list)
-    severity: str = ""
-    references: List[str] = Field(default_factory=list)
-    path: str
-
+from typing import List
+from autofic_core.sast.snippet import BaseSnippet
 
 class SemgrepPreprocessor:
 
@@ -33,10 +18,10 @@ class SemgrepPreprocessor:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
     @staticmethod
-    def preprocess(input_json_path: str, base_dir: str = ".") -> List[SemgrepFileSnippet]:
+    def preprocess(input_json_path: str, base_dir: str = ".") -> List[BaseSnippet]:
         results = SemgrepPreprocessor.read_json_file(input_json_path)
         base_dir_path = Path(base_dir).resolve()
-        processed: List[SemgrepFileSnippet] = []
+        processed: List[BaseSnippet] = []
 
         items = results.get("results") if isinstance(results, dict) else results
 
@@ -66,7 +51,7 @@ class SemgrepPreprocessor:
             extra = result.get("extra", {})
             meta = extra.get("metadata", {})
 
-            processed.append(SemgrepFileSnippet(
+            processed.append(BaseSnippet(
                 input=full_code,
                 idx=idx,
                 start_line=start_line,

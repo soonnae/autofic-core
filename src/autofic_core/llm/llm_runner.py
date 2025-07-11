@@ -4,8 +4,8 @@ from pathlib import Path
 from openai import OpenAI
 from dotenv import load_dotenv
 from autofic_core.errors import LLMExecutionError
-from autofic_core.sast.semgrep_preprocessor import SemgrepPreprocessor
-from autofic_core.sast.semgrep_merger import merge_snippets_by_file
+from autofic_core.sast.semgrep.preprocessor import SemgrepPreprocessor
+from autofic_core.sast.semgrep.merger import merge_snippets_by_file
 from autofic_core.llm.prompt_generator import PromptGenerator, GeneratedPrompt
 
 load_dotenv()
