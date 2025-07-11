@@ -33,6 +33,13 @@ LLM_OPTION = click.option(
     help = 'LLM 응답 생성 및 코드 수정 수행 여부'
 )
 
+LLM_RETRY_OPTION = click.option(
+    '--llm-retry',
+    is_flag=True,
+    default=False,
+    help='수정된 코드에 대해 LLM 재실행을 수행합니다.'
+)
+
 PR_OPTION = click.option(
     '--pr',
     is_flag = True,
@@ -55,6 +62,10 @@ def sast_options(func):
 
 def llm_option(func):
     func = LLM_OPTION(func)
+    return func
+
+def llm_retry_option(func):
+    func = LLM_RETRY_OPTION(func)
     return func
 
 def pr_option(func):
