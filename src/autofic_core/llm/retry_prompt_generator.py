@@ -1,17 +1,17 @@
-from autofic_core.llm.prompt_generator import PromptGenerator
-from autofic_core.sast.semgrep_snippet import SemgrepSnippet
+from autofic_core.llm.prompt_generator import GeneratedPrompt
+from autofic_core.sast.semgrep_preprocessor import SemgrepFileSnippet
 from typing import List
 
 
 class RetryPromptGenerator:
     def __init__(self):
-        self.prompt_generator = PromptGenerator()
+        self.prompt_generator = GeneratedPrompt()
 
-    def generate_prompts(self, diffs: List[dict]) -> List[PromptGenerator.PromptWithSnippet]:
+    def generate_prompts(self, diffs: List[dict]) -> List[GeneratedPrompt]:
         retry_prompts = []
 
         for diff in diffs:
-            snippet = SemgrepSnippet(
+            snippet = SemgrepFileSnippet(
                 path=str(diff["source_path"]),
                 start_line=diff["start_line"],
                 code=diff["diff_content"]
