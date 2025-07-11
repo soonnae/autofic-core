@@ -1,0 +1,105 @@
+--- a/core/appHandler.js
++++ b/core/appHandler.js
+@@ -1,14 +1,13 @@
+ var db = require('../models')
+ var bCrypt = require('bcrypt')
+-const exec = require('child_process').exec;
++const { execFile } = require('child_process');
+ var mathjs = require('mathjs')
+ var libxmljs = require("libxmljs");
+-var serialize = require("node-serialize")
+ const Op = db.Sequelize.Op
+ 
+ module.exports.userSearch = function (req, res) {
+-	var query = "SELECT name,id FROM Users WHERE login='" + req.body.login + "'";
+-	db.sequelize.query(query, {
++	db.sequelize.query("SELECT name,id FROM Users WHERE login=:login", {
++		replacements: { login: req.body.login },
+ 		model: db.User
+ 	}).then(user => {
+ 		if (user.length) {
+@@ -36,12 +35,19 @@
+ }
+ 
+ module.exports.ping = function (req, res) {
+-	exec('ping -c 2 ' + req.body.address, function (err, stdout, stderr) {
+-		output = stdout + stderr
++	const address = req.body.address;
++	if (/^[a-zA-Z0-9.-]+$/.test(address)) {
++		execFile('ping', ['-c', '2', address], function (err, stdout, stderr) {
++			const output = stdout + stderr;
++			res.render('app/ping', {
++				output: output
++			})
++		})
++	} else {
+ 		res.render('app/ping', {
+-			output: output
+-		})
+-	})
++			output: 'Invalid address'
++		})
++	}
+ }
+ 
+ module.exports.listProducts = function (req, res) {
+@@ -125,7 +131,7 @@
+ 			output = {
+ 				product: product
+ 			}
+-			req.flash('danger',err)
++			req.flash('danger', err)
+ 			res.render('app/modifyproduct', {
+ 				output: output
+ 			})
+@@ -215,24 +221,28 @@
+ module.exports.bulkProductsLegacy = function (req,res){
+ 	// TODO: Deprecate this soon
+ 	if(req.files.products){
+-		var products = serialize.unserialize(req.files.products.data.toString('utf8'))
+-		products.forEach( function (product) {
+-			var newProduct = new db.Product()
+-			newProduct.name = product.name
+-			newProduct.code = product.code
+-			newProduct.tags = product.tags
+-			newProduct.description = product.description
+-			newProduct.save()
+-		})
+-		res.redirect('/app/products')
++		try {
++			var products = JSON.parse(req.files.products.data.toString('utf8'))
++			products.forEach( function (product) {
++				var newProduct = new db.Product()
++				newProduct.name = product.name
++				newProduct.code = product.code
++				newProduct.tags = product.tags
++				newProduct.description = product.description
++				newProduct.save()
++			})
++			res.redirect('/app/products')
++		} catch (err) {
++			res.render('app/bulkproducts', {messages: {danger: 'Invalid file'}, legacy: true})
++		}
+ 	}else{
+-		res.render('app/bulkproducts',{messages:{danger:'Invalid file'},legacy:true})
++		res.render('app/bulkproducts', {messages: {danger: 'Invalid file'}, legacy: true})
+ 	}
+ }
+ 
+ module.exports.bulkProducts =  function(req, res) {
+ 	if (req.files.products && req.files.products.mimetype=='text/xml'){
+-		var products = libxmljs.parseXmlString(req.files.products.data.toString('utf8'), {noent:true,noblanks:true})
++		var products = libxmljs.parseXmlString(req.files.products.data.toString('utf8'), {noent:false,noblanks:true})
+ 		products.root().childNodes().forEach( product => {
+ 			var newProduct = new db.Product()
+ 			newProduct.name = product.childNodes()[0].text()
+@@ -243,6 +253,6 @@
+ 		})
+ 		res.redirect('/app/products')
+ 	}else{
+-		res.render('app/bulkproducts',{messages:{danger:'Invalid file'},legacy:false})
+-	}
+-}
++		res.render('app/bulkproducts', {messages: {danger: 'Invalid file'}, legacy: false})
++	}
++}

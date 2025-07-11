@@ -13,6 +13,8 @@ from autofic_core.sast.semgrep_preprocessor import SemgrepPreprocessor, SemgrepF
 from autofic_core.sast.semgrep_merger import merge_snippets_by_file
 from autofic_core.llm.prompt_generator import PromptGenerator
 from autofic_core.llm.llm_runner import LLMRunner, save_md_response
+from autofic_core.llm.retry_prompt_generator import RetryPromptGenerator
+from autofic_core.patch.diff_generator import DiffGenerator
 from autofic_core.llm.response_parser import ResponseParser
 from autofic_core.patch.apply_patch import PatchApplier
 
@@ -182,6 +184,26 @@ class LLMProcessor:
         console.print(f"\n[ SUCCESS ] LLM 응답 저장 완료 (로그) → {self.llm_output_dir}\n", style="green")
         return prompts, file_snippets
 
+    def retry(self):
+        print_divider("LLM 재실행 단계")
+        console.print("[RETRY] 수정된 코드에 대해 GPT 재실행 중...\n")
+
+        retry_output_dir = self.save_dir / "llm_retry"
+        parsed_dir = self.save_dir / "parsed"  # 기존 응답
+        retry_output_dir.mkdir(parents=True, exist_ok=True)
+
+        diff_gen = DiffGenerator(repo_dir=self.repo_path, parsed_dir=parsed_dir, patch_dir=self.save_dir / "retry_diff")
+        diff_gen.run()
+
+        retry_prompts = RetryPromptGenerator().generate_prompts(diff_gen.load_diffs())
+
+        llm = LLMRunner()
+        for prompt in retry_prompts:
+            response = llm.run(prompt.prompt)
+            save_md_response(response, prompt.snippet, output_dir=retry_output_dir)
+
+        console.print(f"\n[ SUCCESS ] 재검토 GPT 응답 저장 완료 → {retry_output_dir}\n", style="green")
+
     def extract_and_save_parsed_code(self):
         print_divider("LLM 응답 코드 추출 및 저장 단계")
         parser = ResponseParser(md_dir=self.llm_output_dir, diff_dir=self.parsed_dir)
@@ -223,12 +245,13 @@ class PatchManager:
 
 
 class AutoFiCPipeline:
-    def __init__(self, repo_url: str, save_dir: Path, sast: bool, rule: str, llm: bool):
+    def __init__(self, repo_url: str, save_dir: Path, sast: bool, rule: str, llm: bool, llm_retry: bool):
         self.repo_url = repo_url
         self.save_dir = save_dir.expanduser().resolve()
         self.sast = sast
         self.rule = rule
         self.llm = llm
+        self.llm_retry = llm_retry
 
         self.repo_manager = RepositoryManager(self.repo_url, self.save_dir)
         self.sast_analyzer = None
@@ -263,6 +286,11 @@ class AutoFiCPipeline:
                 output_dir=str(llm_output_dir),
                 response_files=response_files
             )
+            
+        if self.llm_retry:
+            if not self.llm_processor:
+                raise RuntimeError("LLM 재실행은 --llm 실행 후만 수행됩니다.")
+            self.llm_processor.retry()
 
 
 @click.command()
@@ -272,10 +300,11 @@ class AutoFiCPipeline:
 @click.option('--sast', is_flag=True, help="Semgrep 기반 정적 분석 실행")
 @click.option('--rule', default="p/default", help="SAST 수행 시 사용할 Semgrep 룰셋 경로 또는 preset")
 @click.option('--llm', is_flag=True, help="LLM을 통한 취약 코드 수정 및 응답 저장")
+@click.option('--llm-retry', is_flag=True, help="LLM 재실행을 통한 최종 확인 및 수정")
 @click.option('--patch', is_flag=True, help="diff 생성 및 git apply로 패치")
 
 
-def main(explain, repo, save_dir, sast, rule, llm, patch):
+def main(explain, repo, save_dir, sast, rule, llm, llm_retry, patch):
     if explain:
         print_help_message()
         return
@@ -284,12 +313,19 @@ def main(explain, repo, save_dir, sast, rule, llm, patch):
         click.echo(" --repo는 필수입니다!", err=True)
         return
 
-    if llm and not sast:
-        click.secho("[ ERROR ] --llm 옵션은 --sast 없이 단독으로 사용할 수 없습니다!", fg="red")
+    if llm and llm_retry:
+        click.secho("[ ERROR ] --llm-retry 옵션은 --llm 옵션이 자동으로 함께 실행됩니다!", fg="red")
         return
 
+    if not sast and (llm or llm_retry):
+        click.secho("[ ERROR ] --llm 또는 --llm-retry 옵션은 --sast 없이 단독 사용 불가!", fg="red")
+        return
+
+
     try:
-        pipeline = AutoFiCPipeline(repo, Path(save_dir), sast, rule, llm)
+        llm_flag = llm or llm_retry
+
+        pipeline = AutoFiCPipeline(repo, Path(save_dir), sast, rule, llm=llm_flag, llm_retry=llm_retry)
         pipeline.run()
 
         if patch:

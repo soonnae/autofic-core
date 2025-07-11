@@ -1,0 +1,1 @@
+"  database: process.env.MYSQL_DATABASE,\n  dialect: 'mysql'\n  host: process.env.MYSQL_HOST || 'mysql-db',\n  password: process.env.MYSQL_PASSWORD,\n  port: process.env.MYSQL_PORT || 3306,\n  username: process.env.MYSQL_USER,\nmodule.exports = {\n}"
