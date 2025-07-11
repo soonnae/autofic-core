@@ -50,6 +50,7 @@ class LogManager:
             "repo_url": repo_url,
             "vulnerabilities": vulnerabilities
         }
+        # "changes" , "sastTool", "rerun" 추가 필요
         response = requests.post(url, json=payload)
         response.raise_for_status()
         return response.json()
