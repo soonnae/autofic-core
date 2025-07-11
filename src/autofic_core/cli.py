@@ -11,7 +11,7 @@ from autofic_core.sast.semgrep_preprocessor import SemgrepPreprocessor
 from autofic_core.sast.semgrep_merger import merge_snippets_by_location
 from autofic_core.llm.prompt_generator import PromptGenerator
 from autofic_core.llm.llm_runner import LLMRunner, save_md_response
-from autofic_core.llm.response_parser import LLMResponseParser
+from autofic_core.llm.response_parser import ResponseParser
 from autofic_core.patch.diff_generator import DiffGenerator
 from autofic_core.llm.response_parser import ResponseParser
 from autofic_core.patch.diff_merger import DiffMerger
