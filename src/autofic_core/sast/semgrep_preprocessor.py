@@ -1,23 +1,25 @@
-import os
+# ✅ semgrep_preprocessor.py
+from pydantic import BaseModel, Field
+from typing import List, Optional
 import json
 from pathlib import Path
-from pydantic import BaseModel, Field
 
-class SemgrepSnippet(BaseModel):
+
+class SemgrepFileSnippet(BaseModel):
     input: str
-    output: str = ""
-    idx: int
+    idx: Optional[int] = None
     start_line: int
     end_line: int
-    snippet: str
-    message: str
-    vulnerability_class: list = Field(default_factory=list)
-    cwe: list = Field(default_factory=list)
-    severity: str
-    references: list = Field(default_factory=list)
-    path: str 
+    snippet: Optional[str] = None
+    message: str = ""
+    vulnerability_class: List[str] = Field(default_factory=list)
+    cwe: List[str] = Field(default_factory=list)
+    severity: str = ""
+    references: List[str] = Field(default_factory=list)
+    path: str
 
-class SemgrepPreprocessor(BaseModel):
+
+class SemgrepPreprocessor:
 
     @staticmethod
     def read_json_file(path: str) -> dict:
@@ -25,46 +27,51 @@ class SemgrepPreprocessor(BaseModel):
             return json.load(f)
 
     @staticmethod
-    def save_json_file(data: dict, path: str) -> None:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=4, ensure_ascii=False)
+    def save_json_file(data: dict, path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
 
     @staticmethod
-    def preprocess(input_json_path: str, base_dir: str = ".") -> list[SemgrepSnippet]:
+    def preprocess(input_json_path: str, base_dir: str = ".") -> List[SemgrepFileSnippet]:
         results = SemgrepPreprocessor.read_json_file(input_json_path)
         base_dir_path = Path(base_dir).resolve()
-        processed: list[SemgrepSnippet] = []
+        processed: List[SemgrepFileSnippet] = []
 
-        for idx, result in enumerate(results.get("results", [])):
+        items = results.get("results") if isinstance(results, dict) else results
+
+        for idx, result in enumerate(items):
             raw_path = result.get("path", "").strip().replace("\\", "/")
+            base_dir_str = str(base_dir_path).replace("\\", "/")
 
-            # rel_path에서 base_dir 중복 제거
-            rel_path = raw_path
-            if raw_path.startswith(str(base_dir).replace("\\", "/")):
-                rel_path = raw_path[len(str(base_dir).replace("\\", "/")):].lstrip("/")
+            rel_path = raw_path[len(base_dir_str):].lstrip("/") if raw_path.startswith(base_dir_str) else raw_path
 
             file_path = (base_dir_path / rel_path).resolve()
-
             if not file_path.exists():
                 raise FileNotFoundError(f"[ERROR] 파일을 찾을 수 없습니다: {file_path}")
 
-            lines = file_path.read_text(encoding='utf-8').splitlines()
-            full_code = "\n".join(lines)
-            start_line = result["start"]["line"]
-            end_line = result["end"]["line"]
-            snippet = "\n".join(lines[start_line - 1:end_line])
+            full_code = file_path.read_text(encoding='utf-8')
+
+            if "start" in result and "line" in result["start"]:
+                start_line = result["start"]["line"]
+                end_line = result["end"]["line"]
+            else:
+                start_line = result.get("start_line", 0)
+                end_line = result.get("end_line", 0)
+
+            lines = full_code.splitlines()
+            snippet_lines = lines[start_line - 1:end_line] if 0 < start_line <= end_line <= len(lines) else []
+            snippet = "\n".join(snippet_lines)
 
             extra = result.get("extra", {})
             meta = extra.get("metadata", {})
 
-            processed.append(SemgrepSnippet(
-                input=full_code.strip(),
-                output="",
+            processed.append(SemgrepFileSnippet(
+                input=full_code,
                 idx=idx,
                 start_line=start_line,
                 end_line=end_line,
-                snippet=snippet.strip(),
+                snippet=snippet,
                 message=extra.get("message", ""),
                 vulnerability_class=meta.get("vulnerability_class", []),
                 cwe=meta.get("cwe", []),
