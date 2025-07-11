@@ -5,7 +5,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from autofic_core.errors import LLMExecutionError
 from autofic_core.sast.semgrep.preprocessor import SemgrepPreprocessor
-from autofic_core.sast.semgrep.merger import merge_snippets_by_file
+from autofic_core.sast.merger import merge_snippets_by_file
 from autofic_core.llm.prompt_generator import PromptGenerator, GeneratedPrompt
 
 load_dotenv()
@@ -56,10 +56,19 @@ def save_md_response(content: str, prompt_obj: GeneratedPrompt, output_dir: Path
 def run_llm_for_semgrep_results(
     semgrep_json_path: str,
     output_dir: Path,
+    tool: str = "semgrep",
     model: str = "gpt-4o",
 ) -> None:
+    
+    if tool == "semgrep":
+        from autofic_core.sast.semgrep.preprocessor import SemgrepPreprocessor as Preprocessor
+    elif tool == "codeql":
+        from autofic_core.sast.codeql.preprocessor import CodeQLPreprocessor as Preprocessor
+    else:
+        raise ValueError(f"지원되지 않는 SAST 도구: {tool}")
+    
     # Semgrep 결과 JSON에서 스니펫 추출
-    raw_snippets = SemgrepPreprocessor.preprocess(semgrep_json_path)
+    raw_snippets = Preprocessor.preprocess(semgrep_json_path)
     # 위치 기준으로 스니펫 병합
     merged_snippets = merge_snippets_by_file(raw_snippets)
 

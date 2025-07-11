@@ -69,3 +69,8 @@ class DiffGenerationError(AutoficError):
         super().__init__(message)
         self.filename = filename
         self.reason = reason
+
+class CodeQLExecutionError(Exception):
+    """Raised when CodeQL execution fails."""
+    def __init__(self):
+        super().__init__("[ERROR] CodeQL 실행 중 오류가 발생했습니다. 자세한 내용은 log 파일을 확인하세요.")

@@ -10,7 +10,9 @@ from autofic_core.utils.progress_utils import create_progress
 from autofic_core.download.github_repo_handler import GitHubRepoHandler
 from autofic_core.sast.semgrep.runner import SemgrepRunner
 from autofic_core.sast.semgrep.preprocessor import SemgrepPreprocessor
-from autofic_core.sast.semgrep.merger import merge_snippets_by_file
+from autofic_core.sast.codeql.runner import CodeQLRunner
+from autofic_core.sast.codeql.preprocessor import CodeQLPreprocessor
+from autofic_core.sast.merger import merge_snippets_by_file
 from autofic_core.llm.prompt_generator import PromptGenerator
 from autofic_core.llm.llm_runner import LLMRunner, save_md_response
 from autofic_core.llm.response_parser import ResponseParser
@@ -51,8 +53,7 @@ def print_help_message():
 --repo          분석할 GitHub 저장소 URL (필수)
 --save-dir      분석 결과를 저장할 디렉토리 (기본: artifacts/downloaded_repo)
 
---sast          Semgrep 기반 정적 분석 실행
---rule          SAST 수행 시 사용할 Semgrep 룰셋 경로 또는 preset (기본: p/default)
+--sast          Semgrep 기반 정적 분석 실행, 사용할 SAST 도구 선택 (semgrep, codeql, eslint, snyk)
 
 --llm           LLM을 통한 취약 코드 수정 및 응답 저장
 
@@ -85,53 +86,92 @@ class RepositoryManager:
 
 
 class SASTAnalyzer:
-    def __init__(self, repo_path: Path, save_dir: Path, rule: str):
+    def __init__(self, repo_path: Path, save_dir: Path, tool: str):
         self.repo_path = repo_path
         self.save_dir = save_dir
-        self.rule = rule
+        self.tool = tool 
         self.result_path = None
 
     def run(self):
         print_divider("SAST 분석 단계")
-        console.print("\nSemgrep 분석 시작\n")
-        with create_progress() as progress:
-            task = progress.add_task("[cyan]Semgrep 분석 진행 중...", total=100)
-            for _ in range(100):
-                progress.update(task, advance=1)
-                time.sleep(0.01)
 
-            semgrep_runner = SemgrepRunner(repo_path=str(self.repo_path), rule=self.rule)
-            semgrep_result_obj = semgrep_runner.run_semgrep()
-            progress.update(task, completed=100)
+        if self.tool == "semgrep":
+            console.print("\nSemgrep 분석 시작\n")
+            with create_progress() as progress:
+                task = progress.add_task("[cyan]Semgrep 분석 진행 중...", total=100)
+                for _ in range(100):
+                    progress.update(task, advance=1)
+                    time.sleep(0.01)
 
-        if semgrep_result_obj.returncode != 0:
-            console.print(f"\n[ ERROR ] Semgrep 실행 실패 (리턴 코드: {semgrep_result_obj.returncode})\n", style="red")
-            raise RuntimeError("Semgrep 실행 실패")
+                semgrep_runner = SemgrepRunner(repo_path=str(self.repo_path), rule="p/javascript")
+                semgrep_result_obj = semgrep_runner.run_semgrep()
+                progress.update(task, completed=100)
 
-        sast_dir = self.save_dir / "sast"
-        sast_dir.mkdir(parents=True, exist_ok=True)
-        self.result_path = sast_dir / "before.json"
+            if semgrep_result_obj.returncode != 0:
+                console.print(f"\n[ ERROR ] Semgrep 실행 실패 (리턴 코드: {semgrep_result_obj.returncode})\n", style="red")
+                raise RuntimeError("Semgrep 실행 실패")
 
-        SemgrepPreprocessor.save_json_file(
-            json.loads(semgrep_result_obj.stdout),
-            self.result_path
-        )
+            sast_dir = self.save_dir / "sast"
+            sast_dir.mkdir(parents=True, exist_ok=True)
+            self.result_path = sast_dir / "before.json"
 
-        console.print(f"\n[ SUCCESS ] Semgrep 결과 저장 완료 (로그) →  {self.result_path}\n", style="green")
+            SemgrepPreprocessor.save_json_file(
+                json.loads(semgrep_result_obj.stdout),
+                self.result_path
+            )
 
-        snippets = SemgrepPreprocessor.preprocess(
-            input_json_path=str(self.result_path),
-            base_dir=str(self.repo_path)
-        )
-        merged_snippets = merge_snippets_by_file(snippets)
+            console.print(f"\n[ SUCCESS ] Semgrep 결과 저장 완료 (로그) →  {self.result_path}\n", style="green")
 
-        merged_path = sast_dir / "merged_snippets.json"
-        with open(merged_path, "w", encoding="utf-8") as f:
-            json.dump([snippet.model_dump() for snippet in merged_snippets], f, indent=2, ensure_ascii=False)
+            snippets = SemgrepPreprocessor.preprocess(
+                input_json_path=str(self.result_path),
+                base_dir=str(self.repo_path)
+            )
+            merged_snippets = merge_snippets_by_file(snippets)
 
-        console.print(f"[ SUCCESS ] 병합된 스니펫 저장 완료 (로그) → {merged_path}\n", style="green")
+            merged_path = sast_dir / "merged_snippets.json"
+            with open(merged_path, "w", encoding="utf-8") as f:
+                json.dump([snippet.model_dump() for snippet in merged_snippets], f, indent=2, ensure_ascii=False)
 
-        return merged_path
+            console.print(f"[ SUCCESS ] 병합된 스니펫 저장 완료 (로그) → {merged_path}\n", style="green")
+
+            return merged_path
+
+        elif self.tool == "codeql":
+            console.print("\nCodeQL 분석 시작\n")
+            with create_progress() as progress:
+                task = progress.add_task("[cyan]CodeQL 분석 진행 중...", total=100)
+                for _ in range(100):
+                    progress.update(task, advance=1)
+                    time.sleep(0.01)
+
+                codeql_runner = CodeQLRunner(repo_path=str(self.repo_path))
+                codeql_result_path = codeql_runner.run_codeql()
+                progress.update(task, completed=100)
+
+            sast_dir = self.save_dir / "sast"
+            sast_dir.mkdir(parents=True, exist_ok=True)
+            self.result_path = sast_dir / "before.json"
+
+            with open(codeql_result_path, "r", encoding="utf-8") as f:
+                sarif_data = json.load(f)
+
+            CodeQLPreprocessor.save_json_file(sarif_data, self.result_path)
+
+            console.print(f"\n[ SUCCESS ] CodeQL 결과 저장 완료 (로그) →  {self.result_path}\n", style="green")
+
+            snippets = CodeQLPreprocessor.preprocess(
+                input_json_path=str(self.result_path),
+                base_dir=str(self.repo_path)
+            )
+            merged_snippets = merge_snippets_by_file(snippets)
+
+            merged_path = sast_dir / "merged_snippets.json"
+            with open(merged_path, "w", encoding="utf-8") as f:
+                json.dump([snippet.model_dump() for snippet in merged_snippets], f, indent=2, ensure_ascii=False)
+
+            console.print(f"[ SUCCESS ] 병합된 스니펫 저장 완료 (로그) → {merged_path}\n", style="green")
+
+            return merged_path
 
     def save_snippets(self, merged_snippets_path: Path):
         with open(merged_snippets_path, "r", encoding="utf-8") as f:
@@ -141,7 +181,7 @@ class SASTAnalyzer:
         snippets_dir.mkdir(parents=True, exist_ok=True)
 
         for snippet_data in merged_snippets:
-            filename_base = snippet_data.get("path", "unknown").replace("/", "_")
+            filename_base = snippet_data.get("path", "unknown").replace("\\", "_").replace("/", "_")
             filename = f"snippet_{filename_base}.json"
             path = snippets_dir / filename
 
@@ -152,10 +192,11 @@ class SASTAnalyzer:
 
 
 class LLMProcessor:
-    def __init__(self, semgrep_result_path: Path, repo_path: Path, save_dir: Path):
-        self.semgrep_result_path = semgrep_result_path
+    def __init__(self, sast_result_path: Path, repo_path: Path, save_dir: Path, tool: str):
+        self.sast_result_path = sast_result_path
         self.repo_path = repo_path
         self.save_dir = save_dir
+        self.tool = tool
         self.llm_output_dir = save_dir / "llm"
         self.parsed_dir = save_dir / "parsed"
 
@@ -163,7 +204,18 @@ class LLMProcessor:
         print_divider("LLM 응답 생성 단계")
 
         prompt_generator = PromptGenerator()
-        file_snippets = SemgrepPreprocessor.preprocess(str(self.semgrep_result_path), base_dir=str(self.repo_path))
+
+        if self.tool == "semgrep":
+            file_snippets = SemgrepPreprocessor.preprocess(
+                str(self.sast_result_path), base_dir=str(self.repo_path)
+            )
+        elif self.tool == "codeql":
+            file_snippets = CodeQLPreprocessor.preprocess(
+                str(self.sast_result_path), base_dir=str(self.repo_path)
+            )
+        else:
+            raise ValueError(f"지원되지 않는 SAST 도구: {self.tool}")
+        
         prompts = prompt_generator.generate_prompts(file_snippets)
 
         llm = LLMRunner()
@@ -223,12 +275,12 @@ class PatchManager:
 
 
 class AutoFiCPipeline:
-    def __init__(self, repo_url: str, save_dir: Path, sast: bool, rule: str, llm: bool):
+    def __init__(self, repo_url: str, save_dir: Path, sast: bool, llm: bool, sast_tool: str):
         self.repo_url = repo_url
         self.save_dir = save_dir.expanduser().resolve()
         self.sast = sast
-        self.rule = rule
         self.llm = llm
+        self.sast_tool = sast_tool
 
         self.repo_manager = RepositoryManager(self.repo_url, self.save_dir)
         self.sast_analyzer = None
@@ -237,17 +289,21 @@ class AutoFiCPipeline:
     def run(self):
         self.repo_manager.clone()
 
-        semgrep_result_path = None
+        sast_result_path = None
         if self.sast:
-            self.sast_analyzer = SASTAnalyzer(self.repo_manager.clone_path, self.save_dir, self.rule)
-            semgrep_result_path = self.sast_analyzer.run()
-            self.sast_analyzer.save_snippets(semgrep_result_path)
+            self.sast_analyzer = SASTAnalyzer(
+            self.repo_manager.clone_path,
+            self.save_dir,
+            tool=self.sast_tool,
+            )
+            sast_result_path = self.sast_analyzer.run()
+            self.sast_analyzer.save_snippets(sast_result_path)
 
         if self.llm:
-            if not semgrep_result_path:
+            if not sast_result_path:
                 raise RuntimeError("LLM 실행 시 SAST 결과 필요")
 
-            self.llm_processor = LLMProcessor(semgrep_result_path, self.repo_manager.clone_path, self.save_dir)
+            self.llm_processor = LLMProcessor(sast_result_path, self.repo_manager.clone_path, self.save_dir, self.sast_tool)
             prompts, file_snippets = self.llm_processor.run()
             self.llm_processor.extract_and_save_parsed_code()
 
@@ -264,18 +320,22 @@ class AutoFiCPipeline:
                 response_files=response_files
             )
 
-
+SAST_TOOL_CHOICES = ['semgrep', 'codeql', 'eslint', 'snykcode']
 @click.command()
 @click.option('--explain', is_flag=True, help="AutoFiC 사용 설명서 출력")
 @click.option('--repo', required=False, help="분석할 GitHub 저장소 URL (필수)")
 @click.option('--save-dir', default="artifacts/downloaded_repo", help="분석 결과 저장 디렉토리")
-@click.option('--sast', is_flag=True, help="Semgrep 기반 정적 분석 실행")
-@click.option('--rule', default="p/default", help="SAST 수행 시 사용할 Semgrep 룰셋 경로 또는 preset")
+@click.option(
+    '--sast',
+    type=click.Choice(SAST_TOOL_CHOICES, case_sensitive=False),
+    required=False,
+    help='사용할 SAST 도구 선택 (semgrep, codeql, eslint, snykcode 중 하나)'
+)
 @click.option('--llm', is_flag=True, help="LLM을 통한 취약 코드 수정 및 응답 저장")
 @click.option('--patch', is_flag=True, help="diff 생성 및 git apply로 패치")
 
 
-def main(explain, repo, save_dir, sast, rule, llm, patch):
+def main(explain, repo, save_dir, sast, llm, patch):
     if explain:
         print_help_message()
         return
@@ -289,7 +349,13 @@ def main(explain, repo, save_dir, sast, rule, llm, patch):
         return
 
     try:
-        pipeline = AutoFiCPipeline(repo, Path(save_dir), sast, rule, llm)
+        pipeline = AutoFiCPipeline(
+        repo_url=repo,
+        save_dir=Path(save_dir),
+        sast=bool(sast),
+        llm=llm,
+        sast_tool=sast.lower()
+        )
         pipeline.run()
 
         if patch:
