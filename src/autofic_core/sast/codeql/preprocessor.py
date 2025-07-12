@@ -89,7 +89,7 @@ class CodeQLPreprocessor:
                 artifact = location.get("artifactLocation", {})
                 region = location.get("region", {})
 
-                file_uri = artifact.get("uri", "Unknown").replace("/", os.sep)
+                file_uri = artifact.get("uri", "Unknown")
                 full_path = os.path.join(base_dir, file_uri)
                 start_line = region.get("startLine", 0)
                 end_line = region.get("endLine") or start_line

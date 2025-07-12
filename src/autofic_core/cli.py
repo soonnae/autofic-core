@@ -457,9 +457,10 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
 
             # Define PRProcedure class
             json_path = str(save_dir.parent / "sast" / "before.json") 
+            tool = sast.lower()
             pr_procedure = PRProcedure(
                 base_branch, repo_name, upstream_owner, 
-                save_dir, repo_url, token, user_name, json_path, tool=sast
+                save_dir, repo_url, token, user_name, json_path, tool
             )
             # Chapter 1
             pr_procedure.post_init()

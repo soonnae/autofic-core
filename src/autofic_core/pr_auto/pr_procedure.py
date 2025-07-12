@@ -23,7 +23,8 @@ import time
 import datetime
 import requests
 import subprocess
-from typing import List, Optional
+from pathlib import Path
+from typing import List
 from collections import defaultdict
 from autofic_core.sast.snippet import BaseSnippet
 from autofic_core.sast.semgrep.preprocessor import SemgrepPreprocessor
@@ -43,7 +44,7 @@ class PRProcedure:
     """
 
     def __init__(self, base_branch: str, repo_name: str,
-                upstream_owner: str, save_dir: str, repo_url: str, token: str, user_name: str, json_path: str, tool: Optional[str] = None):
+                upstream_owner: str, save_dir: str, repo_url: str, token: str, user_name: str, json_path: str, tool: str):
         """
         Initialize PRProcedure with repository and user configuration.
 
@@ -259,26 +260,62 @@ class PRProcedure:
             return
 
     def generate_markdown(self, snippets: List[BaseSnippet]) -> str:
-        def extract_fix_suggestion(md_path: str) -> str:
-            """ Extracts the fix suggestion from a markdown file.
-            Assumes the fix suggestion is under a section"""
-            try:
-                with open(md_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    pattern = r'3\.\s*\**개선\s*방안\**\s*:?[\n\r]+(.*?)(?=\n\s*\d+\.\s|\Z)'
-                    match = re.search(pattern, content, re.DOTALL | re.IGNORECASE)
-                    if match:
-                        return match.group(1).strip()
-            except Exception:
-                pass
-            return "Fix suggestion not found."
+        def _blockquote(text: str) -> str:
+            return "\n".join(f"> {line.lstrip()}" for line in text.strip().splitlines())
 
+        def generate_markdown_from_llm(llm_path: str) -> str:
+            """
+            Parses an LLM-generated markdown response and formats it into a GitHub PR body.
+
+            Expected sections in the markdown file:
+            1. Vulnerability Description
+            2. Potential Risks
+            3. Recommended Fix
+            4. Final Patched Code
+            5. References
+            """
+            try:
+                with open(llm_path, encoding='utf-8') as f:
+                    content = f.read()
+            except FileNotFoundError:
+                return {
+                    "Vulnerability": "",
+                    "Risks": "",
+                    "Recommended Fix": "",
+                    "References": ""
+                }
+
+            sections = {
+                "Vulnerability": "",
+                "Risks": "",
+                "Recommended Fix": "",
+                "References": ""
+            }
+
+            pattern = re.compile(
+                r"1\. 취약점 설명\s*[:：]?(.*?)"
+                r"2\. 예상 위험\s*[:：]?(.*?)"
+                r"3\. 개선 방안\s*[:：]?(.*?)"
+                r"(?:4\. 최종 수정된 전체 코드.*?)?"
+                r"5\. 참고사항\s*[:：]?(.*)",
+                re.DOTALL
+            )
+
+            match = pattern.search(content)
+            if match:
+                sections["Vulnerability"] = match.group(1).strip()
+                sections["Risks"] = match.group(2).strip()
+                sections["Recommended Fix"] = match.group(3).strip()
+                sections["References"] = match.group(4).strip()
+
+            return sections
+        
         grouped_by_file = defaultdict(list)
         for item in snippets:
             filename = os.path.basename(item.path or "Unknown")
             grouped_by_file[filename].append(item)
 
-        md = ["## 🛠️ Security Patch Summary\n"]
+        md = ["## 🔏 Security Patch Summary\n"]
         if not grouped_by_file:
             md.append("No vulnerabilities detected. No changes made.\n")
             return "\n".join(md)
@@ -286,36 +323,49 @@ class PRProcedure:
         file_idx = 1
         for filename, items in grouped_by_file.items():
             md.append(f"### 🗂️ {file_idx}. `{filename}`")
-            min_line = min(item.start_line for item in items)
-            max_line = max(item.end_line for item in items)
-            file_lines = f"{min_line} ~ {max_line}"
-            md.append(f"- #️⃣ **Lines**: {file_lines}")
-
+            md.append(f"#### 🔎 SAST Analysis Summary")
             for vuln_idx, item in enumerate(items, 1):
                 vuln = item.vulnerability_class[0] if item.vulnerability_class else "N/A"
-                md.append(f"\n #### {file_idx}-{vuln_idx}. [Vulnerability] {vuln}")
-                md.append(f"- 🛡️ Severity: {item.severity}")
+                md.append(f"> #### {file_idx}-{vuln_idx}. [Vulnerability] {vuln}")
+                if item.start_line == item.end_line:
+                    md.append(f"> - #️⃣ Line: {item.start_line}")
+                else:
+                    md.append(f"> - #️⃣ Lines: {item.start_line} ~ {item.end_line}")                
+                md.append(f"> - 🛡️ Severity: {item.severity}")
                 if item.cwe:
-                    md.append(f"- 🔖 {', '.join(item.cwe)}")
+                    md.append(f"> - 🔖 {', '.join(item.cwe)}")
                 if item.references:
                     for ref in item.references:
-                        md.append(f"- 🔗 Reference: {ref}")
-                md.append(f"- ✍️ Message: {item.message.strip()}")
+                        md.append(f"> - 🔗 Reference: {ref}")
+                md.append(f"> - ✍️ Message: {item.message.strip()}")
 
-                for eachname in os.listdir('../llm'):
-                    if filename in eachname and str(item.start_line) in eachname:
-                        md.append(f"- **🤖 How to fix :**")
-                        md_path = os.path.join('../llm', eachname)
-                        fix_text = extract_fix_suggestion(md_path)
-                        fix_lines = fix_text.strip().splitlines()
-                        for line_fix in fix_lines:
-                            line_fix = line_fix.strip()
-                            if line_fix.startswith("-"):
-                                md.append(f"  {line_fix}")
-                            else:
-                                md.append(f"  - {line_fix}")
+            llm_dir = os.path.abspath(os.path.join(self.save_dir, '..', 'llm'))
+            for eachname in os.listdir(llm_dir):
+                if not eachname.endswith('.md'):
+                    continue
+                base_mdname = eachname[:-3] 
+                if base_mdname.startswith("response_"):
+                    base_mdname = base_mdname[len("response_"):]  
+                llm_target_path = base_mdname.replace("_", "/")
+                if item.path == llm_target_path:
+                    llm_path = os.path.join(llm_dir, eachname)
+                    llm_summary = generate_markdown_from_llm(llm_path)
+                    if llm_summary:
+                        md.append(f"#### 🤖 LLM Analysis Summary")
+                        if llm_summary["Vulnerability"]:
+                            md.append(f"> #### 🐞 Vulnerability Description")
+                            md.append(_blockquote(llm_summary["Vulnerability"]))
+                        if llm_summary["Risks"]:
+                            md.append(f"> #### ⚠️ Potential Risks")
+                            md.append(_blockquote(llm_summary["Risks"]))
+                        if llm_summary["Recommended Fix"]:
+                            md.append(f"> #### 🛠 Recommended Fix")     
+                            md.append(_blockquote(llm_summary["Recommended Fix"]))                         
+                        if llm_summary["References"]:
+                            md.append(f"> #### 📎 References")
+                            md.append(_blockquote(llm_summary["References"]))  
                         break
-
+                    
             file_idx += 1
 
         md.append("\n### 💉 Fix Details\n")
@@ -340,4 +390,3 @@ class PRProcedure:
     def contains_all(self, text, *keywords):
         """ Check if all keywords are present in the text."""
         return all(k in text for k in keywords)
-
