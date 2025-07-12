@@ -1,4 +1,5 @@
-# Copyright 2025 Autofic Authors. All Rights Reserved.
+# =============================================================================
+# Copyright 2025 AutoFiC Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,68 +23,12 @@ import time
 import datetime
 import requests
 import subprocess
-from pydantic import BaseModel
 from typing import List, Optional
 from collections import defaultdict
-
-"""
-Pydantic Vulnerability Report Model Structure
-
-- VulnerabilityReport
-  - results: List of VulnerabilityItem
-    - path: File path
-    - start: Start position (dict)
-    - end: End position (dict)
-    - extra: VulnerabilityExtra
-      - message: Description message
-      - severity: Severity level
-      - metadata: VulnerabilityMeta
-        - vulnerability_class: List of vulnerability categories
-        - cwe: List of CWE identifiers
-        - references: List of reference links
-"""
-
-class VulnerabilityMeta(BaseModel):
-    """
-    Metadata for a single vulnerability.
-    - vulnerability_class: List of vulnerability categories (strings)
-    - cwe: List of CWE identifiers (strings)
-    - references: List of reference links (strings)
-    """
-    vulnerability_class: Optional[List[str]] = []
-    cwe: Optional[List[str]] = []
-    references: Optional[List[str]] = []
-
-class VulnerabilityExtra(BaseModel):
-    """
-    Message, severity, and metadata for a vulnerability.
-    - message: Description message
-    - severity: Severity level (default: UNKNOWN)
-    - metadata: VulnerabilityMeta object
-    """
-    message: Optional[str] = ""
-    severity: Optional[str] = "UNKNOWN"
-    metadata: Optional[VulnerabilityMeta] = VulnerabilityMeta()
-
-class VulnerabilityItem(BaseModel):
-    """
-    An individual vulnerability result item.
-    - path: File path where the vulnerability was found
-    - start: Start position (e.g., {"line": 10, "col": 2})
-    - end: End position (e.g., {"line": 10, "col": 18})
-    - extra: VulnerabilityExtra object
-    """
-    path: Optional[str] = "Unknown"
-    start: Optional[dict] = {}
-    end: Optional[dict] = {}
-    extra: Optional[VulnerabilityExtra] = VulnerabilityExtra()
-
-class VulnerabilityReport(BaseModel):
-    """
-    Top-level vulnerability report object.
-    - results: List of VulnerabilityItem objects
-    """
-    results: List[VulnerabilityItem] = []
+from autofic_core.sast.snippet import BaseSnippet
+from autofic_core.sast.semgrep.preprocessor import SemgrepPreprocessor
+from autofic_core.sast.codeql.preprocessor import CodeQLPreprocessor
+from autofic_core.sast.snykcode.preprocessor import SnykCodePreprocessor
 
 class PRProcedure:
     """
@@ -98,7 +43,7 @@ class PRProcedure:
     """
 
     def __init__(self, base_branch: str, repo_name: str,
-                 upstream_owner: str, save_dir: str, repo_url: str, token: str, user_name: str, json_path: Optional[str] = None):
+                upstream_owner: str, save_dir: str, repo_url: str, token: str, user_name: str, json_path: str, tool: Optional[str] = None):
         """
         Initialize PRProcedure with repository and user configuration.
 
@@ -119,6 +64,7 @@ class PRProcedure:
         self.token = token
         self.user_name = user_name
         self.json_path = json_path
+        self.tool = tool
         
     def post_init(self):
         """
@@ -166,20 +112,17 @@ class PRProcedure:
         Stages all modified files and commits with a summary message based on vulnerability scan results.
         Pushes the branch to the forked repository.
         """
-        self.json_path = '../sast/before.json'
-        with open(self.json_path, 'r', encoding='utf-8') as f:
+        with open('../sast/merged_snippets.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
-        self.vulnerabilities = len(data.get("results", []))
+        self.vulnerabilities = len(data)
         
         # Stage all modified/created files except ignored ones
         subprocess.run(['git', 'add', '--all'], check=True)
 
         # Remove common directories from staging
         ignore_paths = [
-            '.codeql-db', '.codeql-results', '.venv', 'env', 'node_modules', '__pycache__',
-            'dist', 'build', 'coverage', '.coverage',
-            '.snyk', '.dcignore', 'snyk_result.sarif.json', '.eslintcache', 'eslint_tmp_env',
-            '.mypy_cache', '.pytest_cache', '.DS_Store'
+            '.codeql-db', '.codeql-results', 'node_modules', '.github', 
+            '.snyk', 'snyk_result.sarif.json', '.eslintcache', 'eslint_tmp_env', '.DS_Store'
         ]
         for path in ignore_paths:
             if os.path.exists(path):
@@ -208,7 +151,7 @@ class PRProcedure:
         else:
             self.base_branch = branches[0].split('/')[-1]
             
-    def generate_pr(self):
+    def generate_pr(self) -> str:
         """
         Creates a pull request on the fork repository.
         Uses vulnerability scan results (by semgrep) to generate a detailed PR body.
@@ -216,7 +159,15 @@ class PRProcedure:
         """
         print(f"[INFO] Creating PR on {self.user_name}/{self.repo_name}. base branch: {self.base_branch}")
         pr_url = f"https://api.github.com/repos/{self.user_name}/{self.repo_name}/pulls"
-        pr_body = self.generate_markdown(self.json_path)
+        if self.tool == "semgrep":
+            snippets = SemgrepPreprocessor.preprocess(self.json_path)
+        elif self.tool == "codeql":
+            snippets = CodeQLPreprocessor.preprocess(self.json_path)
+        elif self.tool == "snykcode":
+            snippets = SnykCodePreprocessor.preprocess(self.json_path)
+        else:
+            raise ValueError(f"Unknown tool: {self.tool}")
+        pr_body = self.generate_markdown(snippets)
         data_post = {
             "title": f"[Autofic] Security Patch {datetime.datetime.now().strftime('%Y-%m-%d')}",
             "head": f"{self.user_name}:{self.branch_name}",
@@ -287,7 +238,13 @@ class PRProcedure:
         
         # Step 4. If all checks pass('success'), create PR to upstream/original repository
         pr_url = f"https://api.github.com/repos/{self.upstream_owner}/{self.repo_name}/pulls"
-        pr_body = self.generate_markdown('../sast/before.json')
+        if self.tool == "semgrep":
+            snippets = SemgrepPreprocessor.preprocess(self.json_path)
+        elif self.tool == "codeql":
+            snippets = CodeQLPreprocessor.preprocess(self.json_path)
+        elif self.tool == "snykcode":
+            snippets = SnykCodePreprocessor.preprocess(self.json_path)
+        pr_body = self.generate_markdown(snippets) 
         data_post = {
             "title": f"[Autofic] Security Patch {datetime.datetime.now().strftime('%Y-%m-%d')}",
             "head": f"{self.user_name}:{self.pr_branch}",
@@ -301,14 +258,7 @@ class PRProcedure:
         else:
             return
 
-    def generate_markdown(self, json_path: str) -> str:
-        """ Generates a markdown summary from a Semgrep JSON report.
-        The markdown includes:
-        - Security patch summary
-        - List of detected vulnerabilities with file, line, severity, and references
-        - Fix suggestions extracted from markdown files in the '../llm' directory
-        - General fix details
-        """
+    def generate_markdown(self, snippets: List[BaseSnippet]) -> str:
         def extract_fix_suggestion(md_path: str) -> str:
             """ Extracts the fix suggestion from a markdown file.
             Assumes the fix suggestion is under a section"""
@@ -323,56 +273,50 @@ class PRProcedure:
                 pass
             return "Fix suggestion not found."
 
-        with open(json_path, 'r', encoding='utf-8') as f:
-            try:
-                data = VulnerabilityReport.parse_raw(f.read())
-            except Exception:
-                f.seek(0)
-                data_dict = json.load(f)
-                data = VulnerabilityReport(**data_dict)
-
-        grouped = defaultdict(list)
-        for item in data.results:
-            filename = os.path.basename(item.path)
-            line = item.start.get("line", "?") if item.start else "?"
-            grouped[(filename, line)].append(item)
+        grouped_by_file = defaultdict(list)
+        for item in snippets:
+            filename = os.path.basename(item.path or "Unknown")
+            grouped_by_file[filename].append(item)
 
         md = ["## 🛠️ Security Patch Summary\n"]
-        if not grouped:
+        if not grouped_by_file:
             md.append("No vulnerabilities detected. No changes made.\n")
             return "\n".join(md)
 
-        for idx, ((filename, line), items) in enumerate(grouped.items(), 1):
-            start_col = items[0].start.get("col", "?") if items[0].start else "?"
-            end_col = items[0].end.get("col", "?") if items[0].end else "?"
-            vuln_type = ", ".join(items[0].extra.metadata.vulnerability_class or [])
-            cwe = ", ".join(items[0].extra.metadata.cwe or [])
-            md.append(f"### {idx}. {vuln_type or cwe or 'N/A'} Detected\n")
-            md.append(f"- **🗂️ File:** {filename}")
-            md.append(f"- **#️⃣ Line:** {line} (col {start_col}~{end_col})")
-            first_severity = items[0].extra.severity or "UNKNOWN"
-            first_refs = items[0].extra.metadata.references if items[0].extra.metadata and items[0].extra.metadata.references else []
-            if first_refs:
-                md.append(f"- **🛡️ Severity:** {first_severity}")
-                md.append(f"- **🔗 Reference:** {first_refs[0]}")
-            else:
-                md.append(f"- **🛡️ Severity:** {first_severity}")
-            for i, item in enumerate(items, 1):
-                msg = item.extra.message or ""
-                md.append(f"- **✍️ SAST Message {i}:** {msg}")
-            for eachname in os.listdir('../llm'):
-                if self.contains_all(eachname, filename, str(line)):
-                    md.append(f"- **🤖 How to fix :**")
-                    md_path = os.path.join('../llm', eachname)
-                    fix_text = extract_fix_suggestion(md_path)
-                    fix_lines = fix_text.strip().splitlines()
-                    for line_fix in fix_lines:
-                        line_fix = line_fix.strip()
-                        if line_fix.startswith("-"):
-                            md.append(f"  {line_fix}")
-                        else:
-                            md.append(f"  - {line_fix}")
-                    break
+        file_idx = 1
+        for filename, items in grouped_by_file.items():
+            md.append(f"### 🗂️ {file_idx}. `{filename}`")
+            min_line = min(item.start_line for item in items)
+            max_line = max(item.end_line for item in items)
+            file_lines = f"{min_line} ~ {max_line}"
+            md.append(f"- #️⃣ **Lines**: {file_lines}")
+
+            for vuln_idx, item in enumerate(items, 1):
+                vuln = item.vulnerability_class[0] if item.vulnerability_class else "N/A"
+                md.append(f"\n #### {file_idx}-{vuln_idx}. [Vulnerability] {vuln}")
+                md.append(f"- 🛡️ Severity: {item.severity}")
+                if item.cwe:
+                    md.append(f"- 🔖 {', '.join(item.cwe)}")
+                if item.references:
+                    for ref in item.references:
+                        md.append(f"- 🔗 Reference: {ref}")
+                md.append(f"- ✍️ Message: {item.message.strip()}")
+
+                for eachname in os.listdir('../llm'):
+                    if filename in eachname and str(item.start_line) in eachname:
+                        md.append(f"- **🤖 How to fix :**")
+                        md_path = os.path.join('../llm', eachname)
+                        fix_text = extract_fix_suggestion(md_path)
+                        fix_lines = fix_text.strip().splitlines()
+                        for line_fix in fix_lines:
+                            line_fix = line_fix.strip()
+                            if line_fix.startswith("-"):
+                                md.append(f"  {line_fix}")
+                            else:
+                                md.append(f"  - {line_fix}")
+                        break
+
+            file_idx += 1
 
         md.append("\n### 💉 Fix Details\n")
         md.append("All vulnerable code paths have been refactored to use parameterized queries or input sanitization as recommended in the references above. Please refer to the diff for exact code changes.\n")
