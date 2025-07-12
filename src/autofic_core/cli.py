@@ -1,6 +1,7 @@
 import click
 import json
 import time
+import os
 from pathlib import Path
 from rich.console import Console
 from pyfiglet import Figlet
@@ -22,6 +23,10 @@ from autofic_core.llm.retry_prompt_generator import RetryPromptGenerator
 from autofic_core.patch.diff_generator import DiffGenerator
 from autofic_core.llm.response_parser import ResponseParser
 from autofic_core.patch.apply_patch import PatchApplier
+from autofic_core.pr_auto.create_yml import AboutYml
+from autofic_core.pr_auto.env_encrypt import EnvEncrypy
+from autofic_core.pr_auto.pr_procedure import PRProcedure
+from autofic_core.pages.log_writer import LogManager
 
 load_dotenv()
 console = Console()
@@ -401,9 +406,10 @@ SAST_TOOL_CHOICES = ['semgrep', 'codeql', 'eslint', 'snykcode']
 @click.option('--llm', is_flag=True, help="LLM을 통한 취약 코드 수정 및 응답 저장")
 @click.option('--llm-retry', is_flag=True, help="LLM 재실행을 통한 최종 확인 및 수정")
 @click.option('--patch', is_flag=True, help="diff 생성 및 git apply로 패치")
+@click.option('--pr', is_flag=True, help="PR 자동 생성까지 수행")
 
 
-def main(explain, repo, save_dir, sast, llm, llm_retry, patch):
+def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
     if explain:
         print_help_message()
         return
@@ -420,7 +426,6 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch):
         click.secho("[ ERROR ] --llm 또는 --llm-retry 옵션은 --sast 없이 단독 사용 불가!", fg="red")
         return
 
-
     try:
         llm_flag = llm or llm_retry
         pipeline = AutoFiCPipeline(repo, Path(save_dir), sast, llm=llm_flag, llm_retry=llm_retry, sast_tool=sast.lower())
@@ -434,6 +439,58 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch):
             patch_manager = PatchManager(parsed_dir, patch_dir, repo_dir)
             patch_manager.run()
 
+        if pr:
+            # PR 자동화
+            branch_num = 1
+            base_branch = 'main'
+            branch_name = "UNKNOWN"
+            repo_name = "UNKOWN"
+            upstream_owner = "UNKOWN"
+            save_dir = Path(save_dir).joinpath('repo')
+            repo_url = repo.rstrip('/').replace('.git', '')
+            secret_discord = os.getenv('DISCORD_WEBHOOK_URL')
+            secret_slack = os.getenv('SLACK_WEBHOOK_URL')
+            token = os.getenv('GITHUB_TOKEN')
+            user_name = os.getenv('USER_NAME')
+            slack_webhook = os.environ.get('SLACK_WEBHOOK_URL')
+            discord_webhook = os.environ.get('DISCORD_WEBHOOK_URL')
+
+            # Define PRProcedure class
+            json_path = str(save_dir.parent / "sast" / "before.json") 
+            pr_procedure = PRProcedure(
+                base_branch, repo_name, upstream_owner, 
+                save_dir, repo_url, token, user_name, json_path=json_path
+            )
+            # Chapter 1
+            pr_procedure.post_init()
+            repo_name = pr_procedure.repo_name
+            upstream_owner = pr_procedure.upstream_owner
+            # Chaper 2
+            pr_procedure.mv_workdir()
+            # Chapter 3
+            pr_procedure.check_branch_exists()
+            branch_name = pr_procedure.branch_name
+            # Chapter 4
+            EnvEncrypy(user_name, repo_name, token).webhook_secret_notifier('DISCORD_WEBHOOK_URL', secret_discord)
+            EnvEncrypy(user_name, repo_name, token).webhook_secret_notifier('SLACK_WEBHOOK_URL', secret_slack)
+            # Chapter 5
+            AboutYml().create_pr_yml()
+            AboutYml().push_pr_yml(user_name, repo_name, token, branch_name)
+            # Chapter 6
+            pr_procedure.change_files()
+            # Chapter 7
+            pr_procedure.current_main_branch()
+            # Chapter 8,9
+            pr_procedure.generate_pr()
+            pr_number = pr_procedure.create_pr()
+            # for log
+            if pr_number:
+                pr_creation_data, repo_status_data = pr_procedure.generate_log_data(pr_number)
+                log_manager = LogManager()
+                log_manager.add_pr_log(**pr_creation_data)
+                log_manager.add_repo_status(**repo_status_data)
+
+    
     except Exception as e:
         console.print(f"[ ERROR ] {e}", style="red")
 
