@@ -120,7 +120,7 @@ class SnykCodePreprocessor:
                     message=result.get("message", {}).get("text", ""),
                     severity=result.get("level", "").upper(),
                     path=file_uri,
-                    vulnerability_class=[rule_id] if rule_id else [],
+                    vulnerability_class=[rule_id.split("/", 1)[-1]] if rule_id else [],
                     cwe=cwe,
                     references=references
                 ))

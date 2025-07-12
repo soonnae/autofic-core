@@ -48,7 +48,7 @@ class CodeQLPreprocessor:
             json.dump(data, f, indent=4, ensure_ascii=False)
 
     @staticmethod
-    def preprocess(input_json_path: str, base_dir: str) -> List[BaseSnippet]:
+    def preprocess(input_json_path: str, base_dir: str = ".") -> List[BaseSnippet]:
         """
         Parses CodeQL SARIF results and extracts code snippets for each finding.
 
@@ -138,7 +138,7 @@ class CodeQLPreprocessor:
                     end_line=end_line,
                     message=res.get("message", {}).get("text", ""),
                     severity=severity,
-                    vulnerability_class=[rule_id] if rule_id else [],
+                    vulnerability_class=[rule_id.split("/", 1)[-1]] if rule_id else [],
                     cwe=meta.get("cwe", []),
                     references=meta.get("references", [])
                 ))
