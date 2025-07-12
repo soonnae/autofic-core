@@ -98,7 +98,7 @@ class PRProcedure:
     """
 
     def __init__(self, base_branch: str, repo_name: str,
-                 upstream_owner: str, save_dir: str, repo_url: str, token: str, user_name: str):
+                 upstream_owner: str, save_dir: str, repo_url: str, token: str, user_name: str, json_path: Optional[str] = None):
         """
         Initialize PRProcedure with repository and user configuration.
 
@@ -118,6 +118,7 @@ class PRProcedure:
         self.repo_url = repo_url
         self.token = token
         self.user_name = user_name
+        self.json_path = json_path
         
     def post_init(self):
         """
@@ -159,29 +160,38 @@ class PRProcedure:
             next_num = 1
         self.branch_name = f'WHS_VULN_DETEC_{next_num}'
         subprocess.run(['git', 'checkout', '-b', self.branch_name], check=True)
-    
+        
     def change_files(self):
         """
-        Simulates file changes (for demo: creates a dummy file and stages it) -> test.txt.
-        Loads a Semgrep JSON result and commits with a summary message.
-        Pushes the branch to the fork.
-        If diff generator implemented, workflow_filename need to change '.'
+        Stages all modified files and commits with a summary message based on vulnerability scan results.
+        Pushes the branch to the forked repository.
         """
-        workflow_filename = 'test.txt'
-        workflow_content = "Codes is Modified!!!"
-        with open(workflow_filename, 'w', encoding='utf-8') as f:
-            f.write(workflow_content)
-        subprocess.run(['git', 'add', workflow_filename], check=True)
-
         self.json_path = '../sast/before.json'
         with open(self.json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        self.vulnerabilities = len(data.get("results",[]))
-        subprocess.run(['git', 'commit', '-m', f"[Autofic] {self.vulnerabilities} malicious code detected!!"], check=True)
+        self.vulnerabilities = len(data.get("results", []))
+        
+        # Stage all modified/created files except ignored ones
+        subprocess.run(['git', 'add', '--all'], check=True)
+
+        # Remove common directories from staging
+        ignore_paths = [
+            '.codeql-db', '.codeql-results', '.venv', 'env', 'node_modules', '__pycache__',
+            'dist', 'build', 'coverage', '.coverage',
+            '.snyk', '.dcignore', 'snyk_result.sarif.json', '.eslintcache', 'eslint_tmp_env',
+            '.mypy_cache', '.pytest_cache', '.DS_Store'
+        ]
+        for path in ignore_paths:
+            if os.path.exists(path):
+                subprocess.run(['git', 'reset', '-q', path], check=False)
+        
+        commit_message = f"[Autofic] {self.vulnerabilities} malicious code detected!!"
+        subprocess.run(['git', 'commit', '-m', commit_message], check=True)
+
         try:
             subprocess.run(['git', 'push', 'origin', self.branch_name], check=True)
             return True
-        except subprocess.CalledProcessError as e:
+        except subprocess.CalledProcessError:
             return False
     
     def current_main_branch(self):
@@ -349,7 +359,7 @@ class PRProcedure:
                 md.append(f"- **🛡️ Severity:** {first_severity}")
             for i, item in enumerate(items, 1):
                 msg = item.extra.message or ""
-                md.append(f"- **✍️ Semgrep Message {i}:** {msg}")
+                md.append(f"- **✍️ SAST Message {i}:** {msg}")
             for eachname in os.listdir('../llm'):
                 if self.contains_all(eachname, filename, str(line)):
                     md.append(f"- **🤖 How to fix :**")

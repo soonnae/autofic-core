@@ -1,9 +1,9 @@
 from collections import defaultdict
 from typing import List
-from autofic_core.sast.semgrep_preprocessor import SemgrepFileSnippet
+from autofic_core.sast.snippet import BaseSnippet
 
 
-def merge_snippets_by_file(snippets: List[SemgrepFileSnippet]) -> List[SemgrepFileSnippet]:
+def merge_snippets_by_file(snippets: List[BaseSnippet]) -> List[BaseSnippet]:
     grouped = defaultdict(list)
 
     for snippet in snippets:
@@ -27,13 +27,13 @@ def merge_snippets_by_file(snippets: List[SemgrepFileSnippet]) -> List[SemgrepFi
         merged_cwe = sorted({c for s in group for c in s.cwe})
         merged_references = sorted({r for s in group for r in s.references})
 
+        severity_order = {"INFO": 0, "WARNING": 1, "ERROR": 2}
         severity = max(
-            (s.severity for s in group),
-            key=lambda x: ["INFO", "WARNING", "ERROR"].index(x.upper()) if x.upper() in ["INFO", "WARNING", "ERROR"] else -1,
+            (str(s.severity).upper() for s in group if s.severity),
+            key=lambda x: severity_order.get(x, -1),
             default=""
         )
-
-        merged_snippets.append(SemgrepFileSnippet(
+        merged_snippets.append(BaseSnippet(
             input=base.input,
             idx=None,
             start_line=start_line,
