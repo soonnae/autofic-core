@@ -1,11 +1,11 @@
 1. 취약점 설명:
-   - 이 코드에서 발견된 취약점은 `sequelize.import()` 메서드의 사용입니다. `sequelize.import()`는 Sequelize v6에서 제거되었습니다. 이는 코드의 호환성과 유지보수에 문제를 일으킬 수 있습니다.
+   - 코드에서 `sequelize.import` 메서드를 사용하고 있습니다. 이 메서드는 Sequelize v6에서 제거되었습니다. `sequelize.import`는 동적으로 모델을 불러오는 데 사용되었으나, 최신 버전에서는 `require` 또는 `import`를 사용하여 모델을 직접 불러와야 합니다.
 
 2. 예상 위험:
-   - `sequelize.import()`를 사용하면 최신 버전의 Sequelize와 호환되지 않으며, 향후 업데이트에서 코드가 작동하지 않을 수 있습니다. 이는 코드의 안정성과 유지보수성을 저하시킬 수 있습니다.
+   - `sequelize.import`를 사용하면 코드가 최신 Sequelize 버전에서 작동하지 않을 수 있습니다. 이는 코드의 유지보수성을 떨어뜨리고, 향후 업데이트 시 호환성 문제를 일으킬 수 있습니다.
 
 3. 개선 방안:
-   - `sequelize.import()` 대신 `require()`를 사용하여 모델 파일을 직접 가져오고, `sequelize.define()`를 사용하여 모델을 정의합니다. 이를 통해 최신 Sequelize 버전과의 호환성을 유지할 수 있습니다.
+   - `sequelize.import` 대신 `require`를 사용하여 모델을 직접 불러오도록 코드를 수정합니다. 각 모델 파일에서 `module.exports`를 통해 모델을 내보내고, `require`를 사용하여 해당 모델을 가져옵니다.
 
 4. 최종 수정된 전체 코드:
 ```javascript
@@ -68,4 +68,4 @@ module.exports = db;
 ```
 
 5. 참고사항:
-   - `sequelize.import()`를 `require()`로 대체하면서 모델 파일은 함수로 내보내져야 하며, 이 함수는 `sequelize` 인스턴스와 `Sequelize.DataTypes`를 인자로 받아야 합니다. 각 모델 파일이 이러한 구조를 따르는지 확인해야 합니다.
+   - 각 모델 파일은 `module.exports = (sequelize, DataTypes) => { ... }` 형식으로 정의되어 있어야 합니다. 이 방식은 Sequelize v6에서 권장하는 모델 정의 방식입니다. 각 모델 파일에서 `sequelize.define`을 사용하여 모델을 정의하고, `module.exports`로 내보내야 합니다.

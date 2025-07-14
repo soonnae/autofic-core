@@ -189,7 +189,7 @@ class LLMProcessor:
         console.print("[RETRY] 수정된 코드에 대해 GPT 재실행 중...\n")
 
         retry_output_dir = self.save_dir / "llm_retry"
-        parsed_dir = self.save_dir / "parsed"  # 기존 응답
+        parsed_dir = self.save_dir / "parsed"  # 기존 응답 코드 디렉토리
         retry_output_dir.mkdir(parents=True, exist_ok=True)
 
         diff_gen = DiffGenerator(repo_dir=self.repo_path, parsed_dir=parsed_dir, patch_dir=self.save_dir / "retry_diff")

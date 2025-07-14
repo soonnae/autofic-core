@@ -52,3 +52,18 @@ class DiffGenerator:
 
             except Exception as e:
                 print(f"[ ERROR ] diff 생성 실패 : {parsed_file.name} - {e}")
+
+    def load_diffs(self) -> list[tuple[Path, str]]:
+        """
+        retry_prompt_generator에서 사용할 diff 리스트 반환
+        :return: (diff_path, diff_content) 튜플 리스트
+        """
+        diffs = []
+        for diff_path in sorted(self.patch_dir.glob("*.diff")):
+            try:
+                content = diff_path.read_text(encoding="utf-8")
+                diffs.append((0, diff_path, content))
+            except Exception as e:
+                print(f"[ ERROR ] {diff_path.name} 읽기 실패 - {e}")
+        return diffs
+    

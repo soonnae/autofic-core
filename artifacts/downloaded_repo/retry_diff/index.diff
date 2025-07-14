@@ -1,6 +1,15 @@
 --- a/models/index.js
 +++ b/models/index.js
-@@ -17,7 +17,7 @@
+@@ -4,7 +4,7 @@
+ var path = require("path");
+ var Sequelize = require("sequelize");
+ var env = process.env.NODE_ENV || "development";
+-var config = require("../config/db.js")
++var config = require("../config/db.js");
+ 
+ if (process.env.DATABASE_URL) {
+   var sequelize = new Sequelize(process.env.DATABASE_URL);
+@@ -17,20 +17,20 @@
  
  sequelize
    .authenticate()
@@ -9,7 +18,9 @@
      console.log('Connection has been established successfully.');
    })
    .catch(function (err) {
-@@ -26,7 +26,7 @@
+     console.log('Unable to connect to the database:', err);
+-  })
++  });
  
  sequelize
    .sync( /*{ force: true }*/ ) // Force To re-initialize tables on each run
@@ -18,6 +29,11 @@
      console.log('It worked!');
    }, function (err) {
      console.log('An error occurred while creating the table:', err);
+-  })
++  });
+ 
+ var db = {};
+ 
 @@ -40,7 +40,7 @@
      return (file.indexOf(".") !== 0) && (file !== "index.js");
    })

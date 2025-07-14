@@ -4,7 +4,7 @@ var fs = require("fs");
 var path = require("path");
 var Sequelize = require("sequelize");
 var env = process.env.NODE_ENV || "development";
-var config = require("../config/db.js")
+var config = require("../config/db.js");
 
 if (process.env.DATABASE_URL) {
   var sequelize = new Sequelize(process.env.DATABASE_URL);
@@ -22,7 +22,7 @@ sequelize
   })
   .catch(function (err) {
     console.log('Unable to connect to the database:', err);
-  })
+  });
 
 sequelize
   .sync( /*{ force: true }*/ ) // Force To re-initialize tables on each run
@@ -30,7 +30,7 @@ sequelize
     console.log('It worked!');
   }, function (err) {
     console.log('An error occurred while creating the table:', err);
-  })
+  });
 
 var db = {};
 

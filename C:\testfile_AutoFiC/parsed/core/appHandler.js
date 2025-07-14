@@ -6,7 +6,7 @@ var libxmljs = require("libxmljs");
 const Op = db.Sequelize.Op
 
 module.exports.userSearch = function (req, res) {
-	db.sequelize.query("SELECT name,id FROM Users WHERE login=:login", {
+	db.sequelize.query("SELECT name,id FROM Users WHERE login = :login", {
 		replacements: { login: req.body.login },
 		model: db.User
 	}).then(user => {
@@ -36,18 +36,16 @@ module.exports.userSearch = function (req, res) {
 
 module.exports.ping = function (req, res) {
 	const address = req.body.address;
-	if (/^[a-zA-Z0-9.-]+$/.test(address)) {
-		execFile('ping', ['-c', '2', address], function (err, stdout, stderr) {
-			const output = stdout + stderr;
-			res.render('app/ping', {
-				output: output
-			})
-		})
-	} else {
-		res.render('app/ping', {
-			output: 'Invalid address'
-		})
+	if (!/^[a-zA-Z0-9.-]+$/.test(address)) {
+		req.flash('danger', 'Invalid address');
+		return res.render('app/ping', { output: 'Invalid address' });
 	}
+	execFile('ping', ['-c', '2', address], function (err, stdout, stderr) {
+		const output = stdout + stderr;
+		res.render('app/ping', {
+			output: output
+		});
+	});
 }
 
 module.exports.listProducts = function (req, res) {
@@ -88,7 +86,7 @@ module.exports.modifyProduct = function (req, res) {
 			output: output
 		})
 	} else {
-		db.Product.find({
+		db.Product.findOne({
 			where: {
 				'id': req.query.id
 			}
@@ -110,7 +108,7 @@ module.exports.modifyProductSubmit = function (req, res) {
 	if (!req.body.id || req.body.id == '') {
 		req.body.id = 0
 	}
-	db.Product.find({
+	db.Product.findOne({
 		where: {
 			'id': req.body.id
 		}
@@ -148,26 +146,16 @@ module.exports.userEdit = function (req, res) {
 }
 
 module.exports.userEditSubmit = function (req, res) {
-	db.User.find({
+	db.User.findOne({
 		where: {
 			'id': req.body.id
-		}		
-	}).then(user =>{
-		if(req.body.password.length>0){
-			if(req.body.password.length>0){
-				if (req.body.password == req.body.cpassword) {
-					user.password = bCrypt.hashSync(req.body.password, bCrypt.genSaltSync(10), null)
-				}else{
-					req.flash('warning', 'Passwords dont match')
-					res.render('app/useredit', {
-						userId: req.user.id,
-						userEmail: req.user.email,
-						userName: req.user.name,
-					})
-					return		
-				}
-			}else{
-				req.flash('warning', 'Invalid Password')
+		}
+	}).then(user => {
+		if (req.body.password.length > 0) {
+			if (req.body.password == req.body.cpassword) {
+				user.password = bCrypt.hashSync(req.body.password, bCrypt.genSaltSync(10), null)
+			} else {
+				req.flash('warning', 'Passwords dont match')
 				res.render('app/useredit', {
 					userId: req.user.id,
 					userEmail: req.user.email,
@@ -179,7 +167,7 @@ module.exports.userEditSubmit = function (req, res) {
 		user.email = req.body.email
 		user.name = req.body.name
 		user.save().then(function () {
-			req.flash('success',"Updated successfully")
+			req.flash('success', "Updated successfully")
 			res.render('app/useredit', {
 				userId: req.body.id,
 				userEmail: req.body.email,
@@ -190,18 +178,26 @@ module.exports.userEditSubmit = function (req, res) {
 }
 
 module.exports.redirect = function (req, res) {
-	if (req.query.url) {
-		res.redirect(req.query.url)
+	const allowedUrls = ['http://example.com', 'http://another-example.com'];
+	if (req.query.url && allowedUrls.includes(req.query.url)) {
+		res.redirect(req.query.url);
 	} else {
-		res.send('invalid redirect url')
+		res.send('invalid redirect url');
 	}
 }
 
 module.exports.calc = function (req, res) {
 	if (req.body.eqn) {
-		res.render('app/calc', {
-			output: mathjs.eval(req.body.eqn)
-		})
+		try {
+			const result = mathjs.evaluate(req.body.eqn);
+			res.render('app/calc', {
+				output: result
+			});
+		} catch (e) {
+			res.render('app/calc', {
+				output: 'Invalid math expression'
+			});
+		}
 	} else {
 		res.render('app/calc', {
 			output: 'Enter a valid math string like (3+3)*2'
@@ -218,41 +214,41 @@ module.exports.listUsersAPI = function (req, res) {
 	})
 }
 
-module.exports.bulkProductsLegacy = function (req,res){
+module.exports.bulkProductsLegacy = function (req, res) {
 	// TODO: Deprecate this soon
-	if(req.files.products){
+	if (req.files.products) {
 		try {
-			var products = JSON.parse(req.files.products.data.toString('utf8'))
-			products.forEach( function (product) {
+			var products = JSON.parse(req.files.products.data.toString('utf8'));
+			products.forEach(function (product) {
 				var newProduct = new db.Product()
 				newProduct.name = product.name
 				newProduct.code = product.code
 				newProduct.tags = product.tags
 				newProduct.description = product.description
 				newProduct.save()
-			})
-			res.redirect('/app/products')
-		} catch (err) {
-			res.render('app/bulkproducts', {messages: {danger: 'Invalid file'}, legacy: true})
+			});
+			res.redirect('/app/products');
+		} catch (e) {
+			res.render('app/bulkproducts', { messages: { danger: 'Invalid file' }, legacy: true });
 		}
-	}else{
-		res.render('app/bulkproducts', {messages: {danger: 'Invalid file'}, legacy: true})
+	} else {
+		res.render('app/bulkproducts', { messages: { danger: 'Invalid file' }, legacy: true });
 	}
 }
 
-module.exports.bulkProducts =  function(req, res) {
-	if (req.files.products && req.files.products.mimetype=='text/xml'){
-		var products = libxmljs.parseXmlString(req.files.products.data.toString('utf8'), {noent:false,noblanks:true})
-		products.root().childNodes().forEach( product => {
+module.exports.bulkProducts = function (req, res) {
+	if (req.files.products && req.files.products.mimetype == 'text/xml') {
+		var products = libxmljs.parseXmlString(req.files.products.data.toString('utf8'), { noent: false, noblanks: true });
+		products.root().childNodes().forEach(product => {
 			var newProduct = new db.Product()
 			newProduct.name = product.childNodes()[0].text()
 			newProduct.code = product.childNodes()[1].text()
 			newProduct.tags = product.childNodes()[2].text()
 			newProduct.description = product.childNodes()[3].text()
 			newProduct.save()
-		})
-		res.redirect('/app/products')
-	}else{
-		res.render('app/bulkproducts', {messages: {danger: 'Invalid file'}, legacy: false})
+		});
+		res.redirect('/app/products');
+	} else {
+		res.render('app/bulkproducts', { messages: { danger: 'Invalid file' }, legacy: false });
 	}
 }
