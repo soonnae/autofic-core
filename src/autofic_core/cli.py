@@ -320,7 +320,6 @@ class PatchManager:
     def run(self):
         print_divider("Diff 생성 및 패치 적용 단계")
 
-        # diff 생성
         from autofic_core.patch.diff_generator import DiffGenerator
         diff_generator = DiffGenerator(
             repo_dir=self.repo_dir,
@@ -330,12 +329,15 @@ class PatchManager:
         diff_generator.run()
         console.print(f"\n[ SUCCESS ] Diff 생성 완료 → {self.patch_dir}\n", style="green")
 
-        # patch 적용
-        patch_applier = PatchApplier(patch_dir=self.patch_dir, repo_dir=self.repo_dir)
+        patch_applier = PatchApplier(
+            patch_dir=self.patch_dir,
+            repo_dir=self.repo_dir,
+            parsed_dir=self.parsed_dir,  
+        )
         success = patch_applier.apply_all()
 
         if success:
-            console.print(f"[SUCCESS] 모든 패치 적용 완료 → {self.repo_dir}\n", style="green")
+            console.print(f"\n[ SUCCESS ] 모든 패치 적용 완료 → {self.repo_dir}\n", style="green")
         else:
             console.print(f"\n[ WARN ] 일부 패치 적용 실패 발생 → {self.repo_dir}\n", style="yellow")
 
