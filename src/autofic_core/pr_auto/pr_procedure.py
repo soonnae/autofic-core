@@ -261,8 +261,7 @@ class PRProcedure:
         }
         pr_resp = requests.post(pr_url, json=data_post, headers=headers)
         if pr_resp.status_code in (201, 202):
-            pr_json = pr_resp.json()
-            return pr_number            
+            pr_json = pr_resp.json()            
         else:
             return
 
@@ -378,21 +377,7 @@ class PRProcedure:
         md.append("\n### 💉 Fix Details\n")
         md.append("All vulnerable code paths have been refactored to use parameterized queries or input sanitization as recommended in the references above. Please refer to the diff for exact code changes.\n")
         md.append("---\n")
-        return "\n".join(md)
-
-    def generate_log_data(self, pr_number):
-        today = datetime.date.today().isoformat()
-        pr_creation_data = {
-            "date": today,
-            "repo": f"{self.user_name}/{self.repo_name}",
-            "pr_number": pr_number,
-        }
-        repo_status_data = {
-            "name": self.repo_name,
-            "repo_url": f"https://github.com/{self.upstream_owner}/{self.repo_name}",
-            "vulnerabilities": getattr(self, 'vulnerabilities', 0)
-        }
-        return pr_creation_data, repo_status_data    
+        return "\n".join(md)    
 
     def contains_all(self, text, *keywords):
         """ Check if all keywords are present in the text."""
