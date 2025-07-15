@@ -26,7 +26,8 @@ from autofic_core.patch.apply_patch import PatchApplier
 from autofic_core.pr_auto.create_yml import AboutYml
 from autofic_core.pr_auto.env_encrypt import EnvEncrypy
 from autofic_core.pr_auto.pr_procedure import PRProcedure
-from autofic_core.pages.log_writer import LogManager
+from autofic_core.log.log_writer import LogManager
+from autofic_core.log.log_generator import LogGenerator
 
 load_dotenv()
 console = Console()
@@ -412,6 +413,9 @@ SAST_TOOL_CHOICES = ['semgrep', 'codeql', 'eslint', 'snykcode']
 
 
 def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
+    log_manager = LogManager()
+    log_gen = LogGenerator()
+    
     if explain:
         print_help_message()
         return
@@ -485,17 +489,18 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
             pr_procedure.current_main_branch()
             # Chapter 8,9
             pr_procedure.generate_pr()
-            pr_number = pr_procedure.create_pr()
-            # for log
-            if pr_number:
-                pr_creation_data, repo_status_data = pr_procedure.generate_log_data(pr_number)
-                log_manager = LogManager()
-                log_manager.add_pr_log(**pr_creation_data)
-                log_manager.add_repo_status(**repo_status_data)
+            pr_procedure.create_pr()
+            # for pr_log
+            pr_log_data = log_gen.generate_pr_log(user_name=user_name, repo_name=repo_name, approved=False)
+            log_manager.add_pr_log(pr_log_data)
+            
+            # for repo_log
+            repo_data = log_gen.generate_repo_log(save_dir=save_dir.parent, name=repo_name, owner=upstream_owner, repo_url=repo_url,
+            sastTool=tool, rerun=llm_retry)
+            log_manager.add_repo_status(repo_data)
 
-    
     except Exception as e:
         console.print(f"[ ERROR ] {e}", style="red")
-
+    
 if __name__ == "__main__":
     main()
