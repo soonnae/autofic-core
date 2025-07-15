@@ -280,33 +280,54 @@ class LLMProcessor:
 
         console.print(f"\n[ SUCCESS ] LLM 응답 저장 완료 (로그) → {self.llm_output_dir}\n", style="green")
         return prompts, file_snippets
-
+    
     def retry(self):
         print_divider("LLM 재실행 단계")
+
         console.print("[RETRY] 수정된 코드에 대해 GPT 재실행 중...\n")
 
         retry_output_dir = self.save_dir / "llm_retry"
         parsed_dir = self.save_dir / "parsed"
-        patch_dir = self.save_dir / "retry_diff"
+        patch_dir = self.save_dir / "retry_patch"
         retry_output_dir.mkdir(parents=True, exist_ok=True)
 
-        # 1. diff 생성
-        diff_gen = DiffGenerator(
+        llm_md_files = list(retry_output_dir.glob("response_*.md"))
+        if not llm_md_files:
+            console.print("[WARN] GPT 응답이 비어있습니다. 기존 diff 로직 사용합니다.", style="yellow")
+
+            diff_dir = self.save_dir / "patch"
+            diff_files = list(diff_dir.glob("*.diff"))
+
+            if not diff_files:
+                console.print("[WARN] diff 파일도 없습니다. parsed 파일로 덮어쓰기 시도합니다.", style="yellow")
+                for parsed_file in parsed_dir.glob("*.parsed"):
+                    rel_path = parsed_file.stem.replace("_", "/") + ".js"
+                    target_path = self.repo_path / rel_path
+                    target_path.parent.mkdir(parents=True, exist_ok=True)
+                    target_path.write_text(parsed_file.read_text(), encoding="utf-8")
+                console.print(f"[ SUCCESS ] diff 없이 parsed 코드로 덮어쓰기 완료 → {self.repo_path}", style="green")
+                return
+            else:
+                patch_dir = diff_dir
+        else:
+            patch_dir = self.save_dir / "retry_patch"
+
+        # PatchApplier로 diff 적용
+        patch_applier = PatchApplier(
+            patch_dir=patch_dir,
             repo_dir=self.repo_path,
-            parsed_dir=parsed_dir,
-            patch_dir=patch_dir
+            parsed_dir=parsed_dir
         )
-        diff_gen.run()
+        patch_applier.apply_all()
 
-        # 2. diff 로드
-        diffs = diff_gen.load_diffs(output_type=self.tool)
+        # 이후 LLM 응답 저장
 
-        # 3. RetryPromptGenerator 사용해서 prompts 생성
-        retry_gen = RetryPromptGenerator(patch_dir=patch_dir)
+        time.sleep(0.1)
+
+        retry_gen = RetryPromptGenerator(patch_dir=patch_dir, md_dir=self.llm_output_dir)
         snippets = retry_gen.load_diffs(output_type=self.tool)
         retry_prompts = retry_gen.generate_prompts(snippets)
 
-        # 4. LLM 실행
         llm = LLMRunner()
         for prompt in retry_prompts:
             response = llm.run(prompt.prompt)
@@ -334,7 +355,6 @@ class PatchManager:
     def run(self):
         print_divider("Diff 생성 및 패치 적용 단계")
 
-        # diff 생성
         from autofic_core.patch.diff_generator import DiffGenerator
         diff_generator = DiffGenerator(
             repo_dir=self.repo_dir,
@@ -342,14 +362,18 @@ class PatchManager:
             patch_dir=self.patch_dir,
         )
         diff_generator.run()
+        time.sleep(0.1)
         console.print(f"\n[ SUCCESS ] Diff 생성 완료 → {self.patch_dir}\n", style="green")
 
-        # patch 적용
-        patch_applier = PatchApplier(patch_dir=self.patch_dir, repo_dir=self.repo_dir)
+        patch_applier = PatchApplier(
+            patch_dir=self.patch_dir,
+            repo_dir=self.repo_dir,
+            parsed_dir=self.parsed_dir,  
+        )
         success = patch_applier.apply_all()
 
         if success:
-            console.print(f"[SUCCESS] 모든 패치 적용 완료 → {self.repo_dir}\n", style="green")
+            console.print(f"\n[ SUCCESS ] 모든 패치 적용 완료 → {self.repo_dir}\n", style="green")
         else:
             console.print(f"\n[ WARN ] 일부 패치 적용 실패 발생 → {self.repo_dir}\n", style="yellow")
 
@@ -447,8 +471,11 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
 
         if patch:
             parsed_dir = Path(save_dir) / "parsed"
-            patch_dir = Path(save_dir) / "patch"
             repo_dir = pipeline.repo_manager.clone_path
+
+            retry_patch_dir = Path(save_dir) / "retry_patch"
+            patch_dir = retry_patch_dir if retry_patch_dir.exists() and any(retry_patch_dir.glob("*.diff")) \
+                else Path(save_dir) / "patch"
 
             patch_manager = PatchManager(parsed_dir, patch_dir, repo_dir)
             patch_manager.run()

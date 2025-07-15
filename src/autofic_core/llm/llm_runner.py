@@ -1,11 +1,26 @@
+# =============================================================================
+# Copyright 2025 AutoFiC Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# =============================================================================
+
 import os
 import click
 from pathlib import Path
 from openai import OpenAI
 from dotenv import load_dotenv
 from autofic_core.errors import LLMExecutionError
-from autofic_core.sast.semgrep_preprocessor import SemgrepPreprocessor
-from autofic_core.sast.semgrep_merger import merge_snippets_by_file
+from autofic_core.sast.merger import merge_snippets_by_file
 from autofic_core.llm.prompt_generator import PromptGenerator, GeneratedPrompt
 
 load_dotenv()
@@ -56,10 +71,21 @@ def save_md_response(content: str, prompt_obj: GeneratedPrompt, output_dir: Path
 def run_llm_for_semgrep_results(
     semgrep_json_path: str,
     output_dir: Path,
+    tool: str = "semgrep",
     model: str = "gpt-4o",
 ) -> None:
+    
+    if tool == "semgrep":
+        from autofic_core.sast.semgrep.preprocessor import SemgrepPreprocessor as Preprocessor
+    elif tool == "codeql":
+        from autofic_core.sast.codeql.preprocessor import CodeQLPreprocessor as Preprocessor
+    elif tool == "snykcode":
+        from autofic_core.sast.snykcode.preprocessor import SnykCodePreprocessor as Preprocessor
+    else:
+        raise ValueError(f"지원되지 않는 SAST 도구: {tool}")
+    
     # Semgrep 결과 JSON에서 스니펫 추출
-    raw_snippets = SemgrepPreprocessor.preprocess(semgrep_json_path)
+    raw_snippets = Preprocessor.preprocess(semgrep_json_path)
     # 위치 기준으로 스니펫 병합
     merged_snippets = merge_snippets_by_file(raw_snippets)
 

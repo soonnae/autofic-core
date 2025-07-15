@@ -68,15 +68,3 @@ class DiffGenerator:
 
             except Exception as e:
                 print(f"[ ERROR ] diff 생성 실패 : {parsed_file.name} - {e}")
-
-    def load_diffs(self, output_type: str = "semgrep") -> list[tuple[int, Path, str]]:
-        diffs = []
-        for diff_path in sorted(self.patch_dir.glob("*.diff")):
-            try:
-                content = diff_path.read_text(encoding="utf-8")
-                # start_line 임의로 0 처리 (추후 라인 분석 로직 필요시 개선)
-                diffs.append((0, diff_path, content))
-            except Exception as e:
-                print(f"[ ERROR ] {diff_path.name} 읽기 실패 - {e}")
-        return diffs
-    

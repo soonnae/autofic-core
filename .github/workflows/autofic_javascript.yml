@@ -40,3 +40,11 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           python src/autofic_core/ci_cd_auto/ci_automation.py
+
+      - name: Trigger dashboard update in Dashboard repo
+        run: |
+          curl -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GIT_TOKEN }}" \
+            https://api.github.com/repos/Autofic/Dashboard/actions/workflows/update_dashboard.yml/dispatches \
+            -d '{"ref":"main"}'

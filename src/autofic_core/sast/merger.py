@@ -1,9 +1,25 @@
+# =============================================================================
+# Copyright 2025 AutoFiC Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# =============================================================================
+
 from collections import defaultdict
 from typing import List
-from autofic_core.sast.semgrep_preprocessor import SemgrepFileSnippet
+from autofic_core.sast.snippet import BaseSnippet
 
 
-def merge_snippets_by_file(snippets: List[SemgrepFileSnippet]) -> List[SemgrepFileSnippet]:
+def merge_snippets_by_file(snippets: List[BaseSnippet]) -> List[BaseSnippet]:
     grouped = defaultdict(list)
 
     for snippet in snippets:
@@ -27,13 +43,13 @@ def merge_snippets_by_file(snippets: List[SemgrepFileSnippet]) -> List[SemgrepFi
         merged_cwe = sorted({c for s in group for c in s.cwe})
         merged_references = sorted({r for s in group for r in s.references})
 
+        severity_order = {"INFO": 0, "WARNING": 1, "ERROR": 2}
         severity = max(
-            (s.severity for s in group),
-            key=lambda x: ["INFO", "WARNING", "ERROR"].index(x.upper()) if x.upper() in ["INFO", "WARNING", "ERROR"] else -1,
+            (str(s.severity).upper() for s in group if s.severity),
+            key=lambda x: severity_order.get(x, -1),
             default=""
         )
-
-        merged_snippets.append(SemgrepFileSnippet(
+        merged_snippets.append(BaseSnippet(
             input=base.input,
             idx=None,
             start_line=start_line,

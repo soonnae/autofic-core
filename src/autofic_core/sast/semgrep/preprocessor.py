@@ -1,23 +1,24 @@
-# ✅ semgrep_preprocessor.py
-from pydantic import BaseModel, Field
-from typing import List, Optional
+# =============================================================================
+# Copyright 2025 AutoFiC Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# =============================================================================
+
+import os
 import json
 from pathlib import Path
-
-
-class SemgrepFileSnippet(BaseModel):
-    input: str
-    idx: Optional[int] = None
-    start_line: int
-    end_line: int
-    snippet: Optional[str] = None
-    message: str = ""
-    vulnerability_class: List[str] = Field(default_factory=list)
-    cwe: List[str] = Field(default_factory=list)
-    severity: str = ""
-    references: List[str] = Field(default_factory=list)
-    path: str
-
+from typing import List
+from autofic_core.sast.snippet import BaseSnippet
 
 class SemgrepPreprocessor:
 
@@ -33,10 +34,10 @@ class SemgrepPreprocessor:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
     @staticmethod
-    def preprocess(input_json_path: str, base_dir: str = ".") -> List[SemgrepFileSnippet]:
+    def preprocess(input_json_path: str, base_dir: str = ".") -> List[BaseSnippet]:
         results = SemgrepPreprocessor.read_json_file(input_json_path)
         base_dir_path = Path(base_dir).resolve()
-        processed: List[SemgrepFileSnippet] = []
+        processed: List[BaseSnippet] = []
 
         items = results.get("results") if isinstance(results, dict) else results
 
@@ -66,7 +67,7 @@ class SemgrepPreprocessor:
             extra = result.get("extra", {})
             meta = extra.get("metadata", {})
 
-            processed.append(SemgrepFileSnippet(
+            processed.append(BaseSnippet(
                 input=full_code,
                 idx=idx,
                 start_line=start_line,
