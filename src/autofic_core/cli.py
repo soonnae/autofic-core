@@ -67,6 +67,7 @@ def print_help_message():
 --sast          Semgrep 기반 정적 분석 실행, 사용할 SAST 도구 선택 (semgrep, codeql, eslint, snyk)
 
 --llm           LLM을 통한 취약 코드 수정 및 응답 저장
+--llm-retry     LLM 재실행을 통한 코드 최종 확인
 
 \n※ 사용 예시:
     python -m autofic_core.cli --repo https://github.com/user/project --sast --llm
@@ -280,27 +281,61 @@ class LLMProcessor:
 
         console.print(f"\n[ SUCCESS ] LLM 응답 저장 완료 (로그) → {self.llm_output_dir}\n", style="green")
         return prompts, file_snippets
-
+    
     def retry(self):
         print_divider("LLM 재실행 단계")
+
         console.print("[RETRY] 수정된 코드에 대해 GPT 재실행 중...\n")
 
         retry_output_dir = self.save_dir / "llm_retry"
-        parsed_dir = self.save_dir / "parsed"  # 기존 응답
+        parsed_dir = self.save_dir / "parsed"
+        patch_dir = self.save_dir / "retry_patch"
         retry_output_dir.mkdir(parents=True, exist_ok=True)
 
-        diff_gen = DiffGenerator(repo_dir=self.repo_path, parsed_dir=parsed_dir, patch_dir=self.save_dir / "retry_diff")
-        diff_gen.run()
+        llm_md_files = list(retry_output_dir.glob("response_*.md"))
+        if not llm_md_files:
+            console.print("[WARN] GPT 응답이 비어있습니다. 기존 diff 로직 사용합니다.", style="yellow")
 
-        retry_prompts = RetryPromptGenerator().generate_prompts(diff_gen.load_diffs())
+            diff_dir = self.save_dir / "patch"
+            diff_files = list(diff_dir.glob("*.diff"))
+
+            if not diff_files:
+                console.print("[WARN] diff 파일도 없습니다. parsed 파일로 덮어쓰기 시도합니다.", style="yellow")
+                for parsed_file in parsed_dir.glob("*.parsed"):
+                    rel_path = parsed_file.stem.replace("_", "/") + ".js"
+                    target_path = self.repo_path / rel_path
+                    target_path.parent.mkdir(parents=True, exist_ok=True)
+                    target_path.write_text(parsed_file.read_text(), encoding="utf-8")
+                console.print(f"[ SUCCESS ] diff 없이 parsed 코드로 덮어쓰기 완료 → {self.repo_path}", style="green")
+                return
+            else:
+                patch_dir = diff_dir
+        else:
+            patch_dir = self.save_dir / "retry_patch"
+
+        # PatchApplier로 diff 적용
+        patch_applier = PatchApplier(
+            patch_dir=patch_dir,
+            repo_dir=self.repo_path,
+            parsed_dir=parsed_dir
+        )
+        patch_applier.apply_all()
+
+        # 이후 LLM 응답 저장
+
+        time.sleep(0.1)
+
+        retry_gen = RetryPromptGenerator(patch_dir=patch_dir, md_dir=self.llm_output_dir)
+        snippets = retry_gen.load_diffs(output_type=self.tool)
+        retry_prompts = retry_gen.generate_prompts(snippets)
 
         llm = LLMRunner()
         for prompt in retry_prompts:
             response = llm.run(prompt.prompt)
-            save_md_response(response, prompt.snippet, output_dir=retry_output_dir)
+            save_md_response(response, prompt, output_dir=retry_output_dir)
 
         console.print(f"\n[ SUCCESS ] 재검토 GPT 응답 저장 완료 → {retry_output_dir}\n", style="green")
-
+    
     def extract_and_save_parsed_code(self):
         print_divider("LLM 응답 코드 추출 및 저장 단계")
         parser = ResponseParser(md_dir=self.llm_output_dir, diff_dir=self.parsed_dir)
@@ -328,6 +363,7 @@ class PatchManager:
             patch_dir=self.patch_dir,
         )
         diff_generator.run()
+        time.sleep(0.1)
         console.print(f"\n[ SUCCESS ] Diff 생성 완료 → {self.patch_dir}\n", style="green")
 
         patch_applier = PatchApplier(
@@ -439,8 +475,11 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
 
         if patch:
             parsed_dir = Path(save_dir) / "parsed"
-            patch_dir = Path(save_dir) / "patch"
             repo_dir = pipeline.repo_manager.clone_path
+
+            retry_patch_dir = Path(save_dir) / "retry_patch"
+            patch_dir = retry_patch_dir if retry_patch_dir.exists() and any(retry_patch_dir.glob("*.diff")) \
+                else Path(save_dir) / "patch"
 
             patch_manager = PatchManager(parsed_dir, patch_dir, repo_dir)
             patch_manager.run()
