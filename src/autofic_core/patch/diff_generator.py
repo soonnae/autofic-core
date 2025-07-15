@@ -1,3 +1,19 @@
+# =============================================================================
+# Copyright 2025 AutoFiC Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# =============================================================================
+
 import difflib
 from pathlib import Path
 
@@ -53,15 +69,12 @@ class DiffGenerator:
             except Exception as e:
                 print(f"[ ERROR ] diff 생성 실패 : {parsed_file.name} - {e}")
 
-    def load_diffs(self) -> list[tuple[Path, str]]:
-        """
-        retry_prompt_generator에서 사용할 diff 리스트 반환
-        :return: (diff_path, diff_content) 튜플 리스트
-        """
+    def load_diffs(self, output_type: str = "semgrep") -> list[tuple[int, Path, str]]:
         diffs = []
         for diff_path in sorted(self.patch_dir.glob("*.diff")):
             try:
                 content = diff_path.read_text(encoding="utf-8")
+                # start_line 임의로 0 처리 (추후 라인 분석 로직 필요시 개선)
                 diffs.append((0, diff_path, content))
             except Exception as e:
                 print(f"[ ERROR ] {diff_path.name} 읽기 실패 - {e}")
