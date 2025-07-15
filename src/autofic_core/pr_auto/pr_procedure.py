@@ -128,7 +128,7 @@ class PRProcedure:
         for path in ignore_paths:
             if os.path.exists(path):
                 subprocess.run(['git', 'reset', '-q', path], check=False)
-        
+
         commit_message = f"[Autofic] {self.vulnerabilities} malicious code detected!!"
         subprocess.run(['git', 'commit', '-m', commit_message], check=True)
 
@@ -190,6 +190,7 @@ class PRProcedure:
         """
         After PR is opened on fork, waits for CI to pass and then automatically creates a PR to the upstream repository.
         """
+
         # Step 1. Find latest open PR on fork
         prs_url = f"https://api.github.com/repos/{self.user_name}/{self.repo_name}/pulls"
         headers = {
@@ -237,6 +238,12 @@ class PRProcedure:
         else:
             return
         
+        workflow_file = Path(".github/workflows/pr_notify.yml")
+        if workflow_file.exists():
+            subprocess.run(['git', 'rm', str(workflow_file)], check=True)
+            subprocess.run(['git', 'commit', '-m', "chore: remove CI workflow before upstream PR"], check=True)
+            subprocess.run(['git', 'push', 'origin', self.pr_branch], check=True)
+
         # Step 4. If all checks pass('success'), create PR to upstream/original repository
         pr_url = f"https://api.github.com/repos/{self.upstream_owner}/{self.repo_name}/pulls"
         if self.tool == "semgrep":
