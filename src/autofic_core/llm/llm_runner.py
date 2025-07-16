@@ -18,10 +18,11 @@ import os
 import click
 from pathlib import Path
 from openai import OpenAI
+from typing import Any
 from dotenv import load_dotenv
 from autofic_core.errors import LLMExecutionError
 from autofic_core.sast.merger import merge_snippets_by_file
-from autofic_core.llm.prompt_generator import PromptGenerator, GeneratedPrompt
+from autofic_core.llm.prompt_generator import PromptGenerator
 
 load_dotenv()
 
@@ -47,10 +48,17 @@ class LLMRunner:
             raise LLMExecutionError(str(e))
 
 
-def save_md_response(content: str, prompt_obj: GeneratedPrompt, output_dir: Path) -> str:
+def save_md_response(content: str, prompt_obj: Any, output_dir: Path) -> str:
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    path = Path(prompt_obj.snippet.path)
+    
+    try:
+        if hasattr(prompt_obj, "snippet"):
+            path = Path(prompt_obj.snippet.path)
+        else:
+            path = Path(prompt_obj.path)
+    except Exception as e:
+        raise RuntimeError(f"[ERROR] 저장 경로 추출 실패: {e}")
+    
     parts = path.parts
 
     # artifacts, downloaded_repo 같은 상위 디렉토리 제거

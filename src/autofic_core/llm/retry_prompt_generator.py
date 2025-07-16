@@ -1,4 +1,3 @@
-
 # =============================================================================
 # Copyright 2025 AutoFiC Authors. All Rights Reserved.
 #
@@ -15,67 +14,77 @@
 # limitations under the License.
 # =============================================================================
 
-from autofic_core.llm.prompt_generator import PromptGenerator, GeneratedPrompt
-from autofic_core.sast.snippet import BaseSnippet
-from pathlib import Path
 from typing import List
-import re
+from pydantic import BaseModel
+from pathlib import Path
+
+class RetryPromptTemplate(BaseModel):
+    title: str
+    content: str
+
+class GeneratedRetryPrompt(BaseModel):
+    title: str
+    prompt: str
+    path: str 
 
 class RetryPromptGenerator:
-    def __init__(self, patch_dir: Path, md_dir: Path):
-        self.patch_dir = patch_dir
-        self.md_dir = md_dir
-        self.prompt_generator = PromptGenerator()
+    def __init__(self, repo_path: Path):
+        self.repo_path = repo_path 
+        self.template = RetryPromptTemplate(
+            title="패치 후 전체 파일 검증 (LLM 재분석)",
+            content=(
+                "다음은 JavaScript 코드 파일입니다. 이 파일에서 보안 취약점을 찾아 수정하세요.\n\n"
+                "```javascript\n"
+                "{input}\n"
+                "```\n\n"
+                "💡 다음 지침을 반드시 지켜서 수정해 주세요:\n"
+                "- 전체 파일 중 **취약한 부분만 최소한으로 수정**해 주세요.\n"
+                "- **기존 줄 번호, 들여쓰기, 코드 정렬**은 원본 그대로 유지해 주세요.\n"
+                "- **취약점과 무관한 부분은 절대로 수정하지 마세요.**\n"
+                "- 최종 결과는 **전체 파일 코드**로 출력해 주세요.\n"
+                "- 이 코드는 diff 기반 자동 패치로 적용될 예정이므로, 원본 구조 변경이 생기면 적용이 실패할 수 있습니다.\n\n"
+                "📝 출력 형식 예시:\n"
+                "1. 취약점 설명: ...\n"
+                "2. 예상 위험: ...\n"
+                "3. 개선 방안: ...\n"
+                "4. 최종 수정된 전체 코드:\n"
+                "```javascript\n"
+                "// 전체 파일이지만 수정은 필요한 부분만 최소로 되어 있어야 합니다\n"
+                "...전체 코드...\n"
+                "```\n"
+                "5. 참고사항: (선택사항)\n"
+            ),
+        )
 
-    def extract_code_from_md(self, md_path: Path) -> str:
-        content = md_path.read_text(encoding="utf-8")
-        match = re.search(r"```javascript\n(.*?)```", content, re.DOTALL)
-        if match:
-            return match.group(1).strip()
-        else:
-            raise ValueError(f"[ERROR] {md_path.name} 에서 코드 블록 추출 실패")
+    def collect_js_files(self) -> List[Path]:
+        exts = ["*.js", "*.jsx", "*.ts", "*.tsx"]
+        files = []
+        for ext in exts:
+            files.extend(self.repo_path.rglob(ext))
+        files = [f for f in files if not f.name.endswith(('.min.js', '.test.js', '.bundle.js'))]
+        return files
 
-    def load_diffs(self, output_type: str = "semgrep") -> List[BaseSnippet]:
-        snippets = []
-        for diff_path in sorted(self.patch_dir.glob("*.diff")):
-            try:
-                content = diff_path.read_text(encoding="utf-8")
+    def generate_prompt(self, file_path: Path) -> GeneratedRetryPrompt:
+        try:
+            code = file_path.read_text(encoding="utf-8")
+        except Exception as e:
+            raise RuntimeError(f"[ERROR] {file_path} 읽기 실패: {e}")
 
-                # 파일 경로 추출 (e.g., +++ b/src/foo.js → src/foo.js)
-                file_match = re.search(r"\+\+\+ b/(.+)", content)
-                path = file_match.group(1) if file_match else diff_path.stem + ".js"
+        rendered_prompt = self.template.content.format(input=code)
+        return GeneratedRetryPrompt(
+            title=self.template.title,
+            prompt=rendered_prompt,
+            path=str(file_path.relative_to(self.repo_path))
+        )
 
-                # diff에서 시작 줄 추출 (e.g., @@ -2,5 +3,6 @@ → 3)
-                hunk_match = re.search(r"\@\@ -\d+(,\d+)? \+(\d+)", content)
-                start_line = int(hunk_match.group(2)) if hunk_match else 0
-
-                # 대응되는 .md에서 코드 블록 추출
-                md_file = self.md_dir / f"response_{diff_path.stem}.md"
-                try:
-                    extracted_code = self.extract_code_from_md(md_file)
-                except Exception:
-                    extracted_code = ""
-
-                # 프롬프트 input을 diff + 코드로 구성
-                prompt_input = f"수정된 코드:\n```javascript\n{extracted_code}\n```\n\n수정 근거(diff):\n{content}"
-
-                snippet = BaseSnippet(
-                    input=prompt_input,
-                    start_line=start_line,
-                    end_line=start_line + content.count("\n"),
-                    message="GPT 재분석을 위한 diff + 수정코드 기반 요청입니다.",
-                    vulnerability_class=["LLM Retry"],
-                    cwe=[],
-                    severity="중간",
-                    references=[],
-                    path=path,
-                    snippet=extracted_code or content,
-                )
-                snippets.append(snippet)
-
-            except Exception as e:
-                print(f"[ ERROR ] {diff_path.name} 읽기 실패 - {e}")
-        return snippets
-
-    def generate_prompts(self, snippets: List[BaseSnippet]) -> List[GeneratedPrompt]:
-        return self.prompt_generator.generate_prompts(snippets)
+    def generate_prompts(self) -> List[GeneratedRetryPrompt]:
+        return [self.generate_prompt(p) for p in self.collect_js_files()]
+    
+    def get_unique_file_paths(self, prompts: List[GeneratedRetryPrompt]) -> List[str]:
+        seen = set()
+        unique = []
+        for prompt in prompts:
+            if prompt.path not in seen:
+                unique.append(prompt.path)
+                seen.add(prompt.path)
+        return sorted(unique)
