@@ -33,14 +33,14 @@ class FlaskProcedure:
         self.save_log(empty_log)
 
     def is_same_repo_entry(existing, new):
-    return (
-        existing.get("name") == new.get("name") and
-        existing.get("options", {}).get("sastTool") == new.get("options", {}).get("sastTool") and
-        existing.get("vulnerabilities") == new.get("vulnerabilities") and
-        existing.get("byClass") == new.get("byClass") and
-        existing.get("changes") == new.get("changes") and
-        existing.get("analysis") == new.get("analysis")
-    )
+        return (
+            existing.get("name") == new.get("name") and
+            existing.get("options", {}).get("sastTool") == new.get("options", {}).get("sastTool") and
+            existing.get("vulnerabilities") == new.get("vulnerabilities") and
+            existing.get("byClass") == new.get("byClass") and
+            existing.get("changes") == new.get("changes") and
+            existing.get("analysis") == new.get("analysis")
+        )
     
     def add_pr(self, new_pr):
         data = self.load_log()
@@ -49,12 +49,12 @@ class FlaskProcedure:
         return new_pr
 
     def add_repo_status(self, new_repo):
-    data = self.load_log()
-    repos = data.setdefault("repos", [])
-    data["repos"] = [r for r in repos if not is_same_repo_entry(r, new_repo)]
-    data["repos"].append(new_repo)
-    self.save_log(data)
-    return new_repo
+        data = self.load_log()
+        repos = data.setdefault("repos", [])
+        data["repos"] = [r for r in repos if not self.is_same_repo_entry(r, new_repo)]
+        data["repos"].append(new_repo)
+        self.save_log(data)
+        return new_repo
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_PATH = os.path.join(BASE_DIR, 'log.json')
