@@ -31,28 +31,28 @@ class RetryPromptGenerator:
     def __init__(self, parsed_dir: Path):
         self.parsed_dir = parsed_dir
         self.template = RetryPromptTemplate(
-            title="패치 후 전체 파일 검증 (LLM 재분석)",
+            title="Post-patch File Verification (LLM Re-analysis)",
             content=(
-                "다음은 JavaScript 코드 파일입니다. 이 파일에서 보안 취약점을 찾아 수정하세요.\n\n"
+                "The following is a JavaScript source file. Please identify and fix any security vulnerabilities.\n\n"
                 "```javascript\n"
                 "{input}\n"
                 "```\n\n"
-                "💡 다음 지침을 반드시 지켜서 수정해 주세요:\n"
-                "- 전체 파일 중 **취약한 부분만 최소한으로 수정**해 주세요.\n"
-                "- **기존 줄 번호, 들여쓰기, 코드 정렬**은 원본 그대로 유지해 주세요.\n"
-                "- **취약점과 무관한 부분은 절대로 수정하지 마세요.**\n"
-                "- 최종 결과는 **전체 파일 코드**로 출력해 주세요.\n"
-                "- 이 코드는 diff 기반 자동 패치로 적용될 예정이므로, 원본 구조 변경이 생기면 적용이 실패할 수 있습니다.\n\n"
-                "📝 출력 형식 예시:\n"
-                "1. 취약점 설명: ...\n"
-                "2. 예상 위험: ...\n"
-                "3. 개선 방안: ...\n"
-                "4. 최종 수정된 전체 코드:\n"
+                "💡 Please strictly follow the guidelines below when modifying the code:\n"
+                "- Modify **only the vulnerable parts** of the file with **minimal changes**.\n"
+                "- Preserve the **original line numbers, indentation, and code formatting** exactly.\n"
+                "- **Do not modify any part of the file that is unrelated to the vulnerabilities.**\n"
+                "- Output the **entire file**, not just the changed lines.\n"
+                "- This code will be used for diff-based automatic patching, so structural changes may cause the patch to fail.\n\n"
+                "📝 Output format example:\n"
+                "1. Vulnerability Description: ...\n"
+                "2. Potential Risk: ...\n"
+                "3. Recommended Fix: ...\n"
+                "4. Final Modified Code:\n"
                 "```javascript\n"
-                "// 전체 파일이지만 수정은 필요한 부분만 최소로 되어 있어야 합니다\n"
-                "...전체 코드...\n"
+                "// Entire file content, but only vulnerable parts should be modified minimally\n"
+                "...entire code...\n"
                 "```\n"
-                "5. 참고사항: (선택사항)\n"
+                "5. Additional Notes: (optional)\n"
             ),
         )
 
@@ -60,7 +60,7 @@ class RetryPromptGenerator:
         try:
             code = file_path.read_text(encoding="utf-8")
         except Exception as e:
-            raise RuntimeError(f"[ERROR] {file_path} 읽기 실패: {e}")
+            raise RuntimeError(f"[ERROR] Failed to read {file_path}: {e}")
 
         rendered_prompt = self.template.content.format(input=code)
         return GeneratedRetryPrompt(
