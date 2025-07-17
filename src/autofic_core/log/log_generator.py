@@ -2,14 +2,11 @@ import datetime
 import json
 import re
 import hashlib
-from typing import List
 from pathlib import Path
 from collections import Counter, defaultdict
-from autofic_core.pr_auto.pr_procedure import PRProcedure
 from autofic_core.sast.semgrep.preprocessor import SemgrepPreprocessor
 from autofic_core.sast.codeql.preprocessor import CodeQLPreprocessor
 from autofic_core.sast.snykcode.preprocessor import SnykCodePreprocessor
-from autofic_core.sast.snippet import BaseSnippet
 
 class LogGenerator:
     def __init__(self, default_options=None):
@@ -24,7 +21,7 @@ class LogGenerator:
             "repo_hash": repo_hash,
             "approved": approved
         }
- 
+
     def generate_repo_log(self, save_dir, name, owner, repo_url, sastTool, rerun=False):
         before_json = Path(save_dir) / 'sast' / 'before.json'
         vulnerabilities = 0
@@ -137,11 +134,11 @@ class LogGenerator:
         }
 
         pattern = re.compile(
-            r"1\. 취약점 설명\s*[:：]?(.*?)"
-            r"2\. 예상 위험\s*[:：]?(.*?)"
-            r"3\. 개선 방안\s*[:：]?(.*?)"
-            r"(?:4\. 최종 수정된 전체 코드.*?)?"
-            r"5\. 참고사항\s*[:：]?(.*)",
+            r"1\. Vulnerability Description\s*[:：]?(.*?)"
+            r"2\. Potential Risk\s*[:：]?(.*?)"
+            r"3\. Suggested Fix\s*[:：]?(.*?)"
+            r"(?:4\. Final Patched Code.*?)?"
+            r"5\. Reference\s*[:：]?(.*)",
             re.DOTALL
         )
 

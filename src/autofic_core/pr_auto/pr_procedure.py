@@ -299,11 +299,11 @@ class PRProcedure:
             }
 
             pattern = re.compile(
-                r"1\. 취약점 설명\s*[:：]?(.*?)"
-                r"2\. 예상 위험\s*[:：]?(.*?)"
-                r"3\. 개선 방안\s*[:：]?(.*?)"
-                r"(?:4\. 최종 수정된 전체 코드.*?)?"
-                r"5\. 참고사항\s*[:：]?(.*)",
+                r"1\. Vulnerability Description\s*[:：]?(.*?)"
+                r"2\. Potential Risk\s*[:：]?(.*?)"
+                r"3\. Suggested Fix\s*[:：]?(.*?)"
+                r"(?:4\. Final Patched Code.*?)?"
+                r"5\. Reference\s*[:：]?(.*)",
                 re.DOTALL
             )
 
