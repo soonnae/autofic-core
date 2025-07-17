@@ -6,11 +6,11 @@ class AutoficError(Exception):
 
 class GitHubTokenMissingError(AutoficError):
     def __init__(self):
-        super().__init__("GITHUB_TOKEN이 설정되어 있지 않습니다.")
+        super().__init__("GITHUB_TOKEN is not set in the environment.")
 
 class RepoURLFormatError(AutoficError):
     def __init__(self, repo_url):
-        super().__init__(f"잘못된 GitHub URL 형식입니다 : {repo_url}")
+        super().__init__(f"Invalid GitHub repository URL format: {repo_url}")
 
 class RepoAccessError(AutoficError):
     def __init__(self, message: str):
@@ -18,13 +18,13 @@ class RepoAccessError(AutoficError):
 
 class ForkFailedError(RepoAccessError):
     def __init__(self, status_code, message):
-        super().__init__(f"Fork 요청 실패 (코드: {status_code}) - {message}")
+        super().__init__(f"Failed to fork repository (HTTP {status_code}) - {message}")
 
 # downloader.py
 
 class FileDownloadError(AutoficError):
     def __init__(self, path, original_error):
-        message = f"{path} 다운로드 실패: {original_error}"
+        message = f"{path} Failed to download file: {original_error}"
         super().__init__(message)
         self.path = path
         self.original_error = original_error
@@ -36,7 +36,7 @@ class SemgrepExecutionError(AutoficError):
         self.returncode = returncode
         self.stdout = stdout
         self.stderr = stderr
-        message = f"Semgrep 실행 실패 (리턴 코드: {returncode})"
+        message = f"Semgrep execution failed (return code:{returncode})"
         super().__init__(message)
 
 # prompt_generator.py
@@ -47,9 +47,9 @@ class PromptGeneratorErrorCodes:
     INVALID_SNIPPET_LIST = "INVALID_SNIPPET_LIST"
 
 class PromptGeneratorErrorMessages:
-    EMPTY_SNIPPET = "빈 코드 스니펫입니다."
-    TEMPLATE_RENDER_ERROR = "템플릿 렌더링 중 오류가 발생했습니다."
-    INVALID_SNIPPET_LIST = "SemgrepSnippet 리스트가 아닙니다."
+    EMPTY_SNIPPET = "The provided code snippet is empty."
+    TEMPLATE_RENDER_ERROR = "An error occurred while rendering the prompt template."
+    INVALID_SNIPPET_LIST = "The input must be a list of SemgrepSnippet objects."
 
 class PromptGenerationException(AutoficError):
     def __init__(self, code: str, message: str):
@@ -59,13 +59,13 @@ class PromptGenerationException(AutoficError):
 class LLMExecutionError(Exception):
     def __init__(self, message: str):
         self.message = message
-        super().__init__(f"LLM 실행 오류: {message}")
+        super().__init__(f"LLM execution error: {message}")
 
 # diff_generator.py
 
 class DiffGenerationError(AutoficError):
     def __init__(self, filename: str, reason: str):
-        message = f"[diff 생성 실패] 파일: {filename} - 이유: {reason}"
+        message = f"[Diff Generation Failed] File: {filename} - Reason: {reason}"
         super().__init__(message)
         self.filename = filename
         self.reason = reason
@@ -73,4 +73,4 @@ class DiffGenerationError(AutoficError):
 class CodeQLExecutionError(Exception):
     """Raised when CodeQL execution fails."""
     def __init__(self):
-        super().__init__("[ERROR] CodeQL 실행 중 오류가 발생했습니다. 자세한 내용은 log 파일을 확인하세요.")
+        super().__init__("[ERROR] CodeQL execution failed. Please check the log file for details.")
