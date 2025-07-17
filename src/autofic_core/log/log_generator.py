@@ -115,7 +115,8 @@ class LogGenerator:
             "changes": 0,
             "analysis": analysis_text,
             "sastTool": sastTool,
-            "rerun": rerun
+            "rerun": rerun,
+            "update" : datetime.datetime.now().isoformat()
         }
 
     def parse_llm_response(self, content: str) -> dict:
