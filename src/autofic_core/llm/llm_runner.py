@@ -43,7 +43,7 @@ class LLMRunner:
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
-            click.echo(f"[LLM ERROR] 모델 요청 실패 - {e}")
+            click.echo(f"[LLM ERROR] Failed to request model - {e}")
             raise LLMExecutionError(str(e))
 
 
@@ -82,7 +82,7 @@ def run_llm_for_semgrep_results(
     elif tool == "snykcode":
         from autofic_core.sast.snykcode.preprocessor import SnykCodePreprocessor as Preprocessor
     else:
-        raise ValueError(f"지원되지 않는 SAST 도구: {tool}")
+        raise ValueError(f"Unsupported SAST tool: {tool}")
     
     # Semgrep 결과 JSON에서 스니펫 추출
     raw_snippets = Preprocessor.preprocess(semgrep_json_path)
@@ -98,8 +98,8 @@ def run_llm_for_semgrep_results(
     # 프롬프트별로 LLM 실행 및 응답 저장
     for generated_prompt in prompts:
         try:
-            click.echo(f"[DEBUG] Prompt 길이 (문자 수): {len(generated_prompt.prompt)}")
+            click.echo(f"[DEBUG] Prompt length (characters): {len(generated_prompt.prompt)}")
             response = runner.run(generated_prompt.prompt)
             save_md_response(response, generated_prompt, output_dir)
         except LLMExecutionError as e:
-            click.echo(f"[ERROR] LLM 처리 실패: {e}")
+            click.echo(f"[ERROR] Failed to process with LLM: {e}")
