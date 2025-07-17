@@ -14,12 +14,12 @@ class LogGenerator:
     def __init__(self, default_options=None):
         self.default_options = default_options or {}
 
-    def generate_pr_log(self, user_name, repo_name, approved=False):
-        today = datetime.date.today().isoformat()
+    def generate_pr_log(self, user_name, repo_url, approved=False):
+        today = datetime.datetime.now().isoformat()
         return {
             "date": today,
-            "repo": f"{repo_name}",
-            "user_name":f"{user_name}",
+            "user_name":user_name,
+            "repo": repo_url,
             "approved": approved
         }
  
