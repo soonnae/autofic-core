@@ -491,7 +491,7 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
             pr_procedure.generate_pr()
             pr_procedure.create_pr()
             # for pr_log
-            pr_log_data = log_gen.generate_pr_log(user_name=user_name, repo_name=repo_name, approved=False)
+            pr_log_data = log_gen.generate_pr_log(user_name=user_name, repo_url=repo_url, approved=False)
             log_manager.add_pr_log(pr_log_data)
             
             # for repo_log
