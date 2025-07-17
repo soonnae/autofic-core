@@ -18,7 +18,7 @@ from autofic_core.sast.snykcode.runner import SnykCodeRunner
 from autofic_core.sast.snykcode.preprocessor import SnykCodePreprocessor
 from autofic_core.sast.merger import merge_snippets_by_file
 from autofic_core.llm.prompt_generator import PromptGenerator
-from autofic_core.llm.llm_runner import LLMRunner, save_md_response
+from autofic_core.llm.llm_runner import LLMRunner, save_md_response 
 from autofic_core.llm.retry_prompt_generator import RetryPromptGenerator
 from autofic_core.patch.diff_generator import DiffGenerator
 from autofic_core.llm.response_parser import ResponseParser
@@ -67,6 +67,7 @@ def print_help_message():
 --sast          Semgrep 기반 정적 분석 실행, 사용할 SAST 도구 선택 (semgrep, codeql, eslint, snyk)
 
 --llm           LLM을 통한 취약 코드 수정 및 응답 저장
+--llm-retry     LLM 재실행을 통한 코드 최종 확인
 
 \n※ 사용 예시:
     python -m autofic_core.cli --repo https://github.com/user/project --sast --llm
@@ -254,6 +255,7 @@ class LLMProcessor:
         self.tool = tool
         self.llm_output_dir = save_dir / "llm"
         self.parsed_dir = save_dir / "parsed"
+        self.patch_dir = save_dir / "patch"  
 
     def run(self):
         print_divider("LLM 응답 생성 단계")
@@ -280,27 +282,33 @@ class LLMProcessor:
 
         console.print(f"\n[ SUCCESS ] LLM 응답 저장 완료 (로그) → {self.llm_output_dir}\n", style="green")
         return prompts, file_snippets
-
+    
     def retry(self):
         print_divider("LLM 재실행 단계")
-        console.print("[RETRY] 수정된 코드에 대해 GPT 재실행 중...\n")
 
-        retry_output_dir = self.save_dir / "llm_retry"
-        parsed_dir = self.save_dir / "parsed"  # 기존 응답
+        retry_prompt_generator = RetryPromptGenerator(parsed_dir=self.parsed_dir)
+        retry_prompts = retry_prompt_generator.generate_prompts()
+
+        console.print("[RETRY] 저장소 전체 파일에 대해 GPT 재실행 중...\n")
+
+        llm = LLMRunner() 
+        retry_output_dir = self.save_dir / "retry_llm"
         retry_output_dir.mkdir(parents=True, exist_ok=True)
 
-        diff_gen = DiffGenerator(repo_dir=self.repo_path, parsed_dir=parsed_dir, patch_dir=self.save_dir / "retry_diff")
-        diff_gen.run()
-
-        retry_prompts = RetryPromptGenerator().generate_prompts(diff_gen.load_diffs())
-
-        llm = LLMRunner()
-        for prompt in retry_prompts:
-            response = llm.run(prompt.prompt)
-            save_md_response(response, prompt.snippet, output_dir=retry_output_dir)
+        console.print("\nGPT 응답 생성 및 저장 시작\n")
+        with create_progress() as progress:
+            task = progress.add_task("[magenta]LLM 재검토 중...", total=len(retry_prompts))
+            for prompt in retry_prompts:
+                response = llm.run(prompt.prompt)
+                save_md_response(response, prompt, output_dir=retry_output_dir)
+                progress.update(task, advance=1)
+                time.sleep(0.01)
+            progress.update(task, completed=100)
 
         console.print(f"\n[ SUCCESS ] 재검토 GPT 응답 저장 완료 → {retry_output_dir}\n", style="green")
 
+        return retry_prompts, retry_output_dir
+    
     def extract_and_save_parsed_code(self):
         print_divider("LLM 응답 코드 추출 및 저장 단계")
         parser = ResponseParser(md_dir=self.llm_output_dir, diff_dir=self.parsed_dir)
@@ -310,7 +318,6 @@ class LLMProcessor:
             console.print(f"\n[ SUCCESS ] 파싱된 코드 저장 완료 (로그) → {self.parsed_dir}\n", style="green")
         else:
             console.print(f"\n[ WARN ] 파싱된 코드가 없습니다.\n", style="yellow")
-
 
 class PatchManager:
     def __init__(self, parsed_dir: Path, patch_dir: Path, repo_dir: Path):
@@ -328,6 +335,7 @@ class PatchManager:
             patch_dir=self.patch_dir,
         )
         diff_generator.run()
+        time.sleep(0.1)
         console.print(f"\n[ SUCCESS ] Diff 생성 완료 → {self.patch_dir}\n", style="green")
 
         patch_applier = PatchApplier(
@@ -392,10 +400,30 @@ class AutoFiCPipeline:
             
         if self.llm_retry:
             if not self.llm_processor:
-                raise RuntimeError("LLM 재실행은 --llm 실행 후만 수행됩니다.")
-            self.llm_processor.retry()
+                raise RuntimeError("LLM 재실행은 --llm 실행 후만 수행됩니다.")            
 
-SAST_TOOL_CHOICES = ['semgrep', 'codeql', 'eslint', 'snykcode']
+            patch_manager = PatchManager(self.llm_processor.parsed_dir, self.llm_processor.patch_dir, self.repo_manager.clone_path)
+            patch_manager.run()
+            
+            retry_prompts, retry_output_dir = self.llm_processor.retry()
+            self.llm_processor.parsed_dir = self.save_dir / "retry_parsed"
+            self.llm_processor.llm_output_dir = retry_output_dir
+            self.llm_processor.extract_and_save_parsed_code()
+
+            prompt_generator = RetryPromptGenerator(parsed_dir=self.llm_processor.parsed_dir)
+            unique_file_paths = prompt_generator.get_unique_file_paths(retry_prompts)
+            
+            llm_output_dir = self.llm_processor.llm_output_dir
+            response_files = sorted([f.name for f in llm_output_dir.glob("response_*.md")])
+            
+            print_summary(
+                repo_url=self.repo_url,
+                detected_issues_count=len(unique_file_paths),
+                output_dir=str(retry_output_dir),
+                response_files=response_files
+            )
+
+SAST_TOOL_CHOICES = ['semgrep', 'codeql', 'snykcode']
 @click.command()
 @click.option('--explain', is_flag=True, help="AutoFiC 사용 설명서 출력")
 @click.option('--repo', required=False, help="분석할 GitHub 저장소 URL (필수)")
@@ -404,7 +432,7 @@ SAST_TOOL_CHOICES = ['semgrep', 'codeql', 'eslint', 'snykcode']
     '--sast',
     type=click.Choice(SAST_TOOL_CHOICES, case_sensitive=False),
     required=False,
-    help='사용할 SAST 도구 선택 (semgrep, codeql, eslint, snykcode 중 하나)'
+    help='사용할 SAST 도구 선택 (semgrep, codeql, snykcode 중 하나)'
 )
 @click.option('--llm', is_flag=True, help="LLM을 통한 취약 코드 수정 및 응답 저장")
 @click.option('--llm-retry', is_flag=True, help="LLM 재실행을 통한 최종 확인 및 수정")
@@ -436,11 +464,12 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
         llm_flag = llm or llm_retry
         pipeline = AutoFiCPipeline(repo, Path(save_dir), sast, llm=llm_flag, llm_retry=llm_retry, sast_tool=sast.lower())
         pipeline.run()
+        repo_dir = pipeline.repo_manager.clone_path
 
         if patch:
-            parsed_dir = Path(save_dir) / "parsed"
-            patch_dir = Path(save_dir) / "patch"
-            repo_dir = pipeline.repo_manager.clone_path
+            parsed_dir = Path(save_dir) / "retry_parsed" if llm_retry else Path(save_dir) / "parsed"
+            retry_patch_dir = Path(save_dir) / "retry_patch"
+            patch_dir = retry_patch_dir if llm_retry else Path(save_dir) / "patch"
 
             patch_manager = PatchManager(parsed_dir, patch_dir, repo_dir)
             patch_manager.run()
