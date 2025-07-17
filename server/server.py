@@ -38,7 +38,7 @@ class FlaskProcedure:
             for k in [
                 "name", "owner", "repo_url",
                 "vulnerabilities", "byClass",
-                "sastTool", "rerun"
+                "sastTool", "rerun", "analysis"
             ]
         )
    

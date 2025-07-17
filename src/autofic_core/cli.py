@@ -490,13 +490,12 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
             # Chapter 8,9
             pr_procedure.generate_pr()
             pr_procedure.create_pr()
-            # for pr_log
-            pr_log_data = log_gen.generate_pr_log(user_name=user_name, repo_url=repo_url, approved=False)
+
+            # for log
+            repo_data = log_gen.generate_repo_log(save_dir=save_dir.parent, name=repo_name, owner=upstream_owner,
+            repo_url=repo_url, sastTool=tool, rerun=llm_retry)
+            pr_log_data = log_gen.generate_pr_log(user_name=user_name, repo_url=repo_url, approved=False, repo_hash=repo_data["repo_hash"])
             log_manager.add_pr_log(pr_log_data)
-            
-            # for repo_log
-            repo_data = log_gen.generate_repo_log(save_dir=save_dir.parent, name=repo_name, owner=upstream_owner, repo_url=repo_url,
-            sastTool=tool, rerun=llm_retry)
             log_manager.add_repo_status(repo_data)
 
     except Exception as e:

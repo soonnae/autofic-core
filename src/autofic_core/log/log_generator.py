@@ -1,6 +1,7 @@
 import datetime
 import json
 import re
+import hashlib
 from typing import List
 from pathlib import Path
 from collections import Counter, defaultdict
@@ -14,12 +15,13 @@ class LogGenerator:
     def __init__(self, default_options=None):
         self.default_options = default_options or {}
 
-    def generate_pr_log(self, user_name, repo_url, approved=False):
+    def generate_pr_log(self, user_name, repo_url, repo_hash, approved=False):
         today = datetime.datetime.now().isoformat()
         return {
             "date": today,
             "user_name":user_name,
             "repo": repo_url,
+            "repo_hash": repo_hash,
             "approved": approved
         }
  
@@ -103,20 +105,27 @@ class LogGenerator:
                 if parsed["References"]:
                     analysis_lines.append(f"> #### 📎 References")
                     analysis_lines.append(f"> {parsed['References']}")
-
         analysis_text = "\n".join(analysis_lines)
 
-        return {
+        repo_dict = {
             "name": name,
             "owner": owner,
             "repo_url": repo_url,
             "vulnerabilities": vulnerabilities,
             "byClass": byClass,
-            "changes": 0,
             "analysis": analysis_text,
             "sastTool": sastTool,
             "rerun": rerun
         }
+        repo_dict["repo_hash"] = self.get_repo_hash(repo_dict)
+        return repo_dict
+
+    def get_repo_hash(self, repo_dict):
+        keys_to_include = ["repo_url", "sastTool", "rerun", "vulnerabilities", "byClass", "analysis"]
+        filtered = {k: repo_dict.get(k) for k in keys_to_include}
+        hash_input = json.dumps(filtered, sort_keys=True)
+        return hashlib.sha256(hash_input.encode()).hexdigest()
+
 
     def parse_llm_response(self, content: str) -> dict:
         sections = {
