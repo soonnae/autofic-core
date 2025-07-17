@@ -255,6 +255,7 @@ class LLMProcessor:
         self.tool = tool
         self.llm_output_dir = save_dir / "llm"
         self.parsed_dir = save_dir / "parsed"
+        self.patch_dir = save_dir / "patch"  
 
     def run(self):
         print_divider("LLM 응답 생성 단계")
@@ -285,7 +286,7 @@ class LLMProcessor:
     def retry(self):
         print_divider("LLM 재실행 단계")
 
-        retry_prompt_generator = RetryPromptGenerator(repo_path=self.repo_path)
+        retry_prompt_generator = RetryPromptGenerator(parsed_dir=self.parsed_dir)
         retry_prompts = retry_prompt_generator.generate_prompts()
 
         console.print("[RETRY] 저장소 전체 파일에 대해 GPT 재실행 중...\n")
@@ -400,11 +401,8 @@ class AutoFiCPipeline:
         if self.llm_retry:
             if not self.llm_processor:
                 raise RuntimeError("LLM 재실행은 --llm 실행 후만 수행됩니다.")            
-            
-            parsed_dir = self.save_dir / "parsed"
-            patch_dir = self.save_dir / "patch"
 
-            patch_manager = PatchManager(parsed_dir, patch_dir, self.repo_manager.clone_path)
+            patch_manager = PatchManager(self.llm_processor.parsed_dir, self.llm_processor.patch_dir, self.repo_manager.clone_path)
             patch_manager.run()
             
             retry_prompts, retry_output_dir = self.llm_processor.retry()
@@ -412,7 +410,7 @@ class AutoFiCPipeline:
             self.llm_processor.llm_output_dir = retry_output_dir
             self.llm_processor.extract_and_save_parsed_code()
 
-            prompt_generator = RetryPromptGenerator(repo_path=self.repo_manager.clone_path)
+            prompt_generator = RetryPromptGenerator(parsed_dir=self.llm_processor.parsed_dir)
             unique_file_paths = prompt_generator.get_unique_file_paths(retry_prompts)
             
             llm_output_dir = self.llm_processor.llm_output_dir

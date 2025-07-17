@@ -28,8 +28,8 @@ class GeneratedRetryPrompt(BaseModel):
     path: str 
 
 class RetryPromptGenerator:
-    def __init__(self, repo_path: Path):
-        self.repo_path = repo_path 
+    def __init__(self, parsed_dir: Path):
+        self.parsed_dir = parsed_dir
         self.template = RetryPromptTemplate(
             title="패치 후 전체 파일 검증 (LLM 재분석)",
             content=(
@@ -56,14 +56,6 @@ class RetryPromptGenerator:
             ),
         )
 
-    def collect_js_files(self) -> List[Path]:
-        exts = ["*.js", "*.jsx", "*.ts", "*.tsx"]
-        files = []
-        for ext in exts:
-            files.extend(self.repo_path.rglob(ext))
-        files = [f for f in files if not f.name.endswith(('.min.js', '.test.js', '.bundle.js'))]
-        return files
-
     def generate_prompt(self, file_path: Path) -> GeneratedRetryPrompt:
         try:
             code = file_path.read_text(encoding="utf-8")
@@ -74,11 +66,12 @@ class RetryPromptGenerator:
         return GeneratedRetryPrompt(
             title=self.template.title,
             prompt=rendered_prompt,
-            path=str(file_path.relative_to(self.repo_path))
+            path=str(file_path.relative_to(self.parsed_dir))
         )
 
     def generate_prompts(self) -> List[GeneratedRetryPrompt]:
-        return [self.generate_prompt(p) for p in self.collect_js_files()]
+        parsed_files = sorted(self.parsed_dir.glob("*.parsed")) 
+        return [self.generate_prompt(file) for file in parsed_files]
     
     def get_unique_file_paths(self, prompts: List[GeneratedRetryPrompt]) -> List[str]:
         seen = set()
