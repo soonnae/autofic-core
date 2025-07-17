@@ -19,15 +19,9 @@ import os
 
 class LogManager:
     def __init__(self):
-        """
-        서버 생성: https://autofic-core-t85x.onrender.com
-        """
         self.api_base_url = (os.getenv('LOG_API_URL')).rstrip('/')
 
     def add_pr_log(self, pr_data):
-        """
-        PR 기록
-        """
         url = f"{self.api_base_url}/add_pr"
         response = requests.post(url, json=pr_data)
         response.raise_for_status()

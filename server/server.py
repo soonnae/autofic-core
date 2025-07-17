@@ -31,21 +31,17 @@ class FlaskProcedure:
     def reset_log(self):
         empty_log = {"prs": [], "repos": []}
         self.save_log(empty_log)
-
-    def is_same_repo_entry(existing, new):
-      dev
-        return (
-            existing.get("name") == new.get("name") and
-            existing.get("options", {}).get("sastTool") == new.get("options", {}).get("sastTool") and
-            existing.get("vulnerabilities") == new.get("vulnerabilities") and
-            existing.get("byClass") == new.get("byClass") and
-            existing.get("changes") == new.get("changes") and
-      dev
-            existing.get("analysis") == new.get("analysis") and
-            existing.get("update") == new.get("update") and
-            existing.get("rerun") == new.get("rerun")
-        )
-    
+def is_same_repo_entry(self, existing, new):
+    return all(
+        existing.get(k) == new.get(k)
+        for k in [
+            "name", "owner", "repo_url",
+            "vulnerabilities", "byClass",
+            "sastTool", "rerun",
+            "update"
+        ]
+    )
+   
     def add_pr(self, new_pr):
         data = self.load_log()
         data.setdefault("prs", []).append(new_pr)
