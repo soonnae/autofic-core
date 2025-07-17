@@ -22,13 +22,13 @@ CODE_BLOCK_PATTERN = re.compile(r'```(?:js|javascript)\n([\s\S]+?)```', re.IGNOR
 def extract_code_blocks(content: str) -> str:
     matches = CODE_BLOCK_PATTERN.findall(content)
     if not matches:
-        raise ValueError("js/javascript 코드 블럭을 찾을 수 없습니다.")
+        raise ValueError("No js/javascript code blocks found.")
     return "\n\n".join(m.strip() for m in matches)
 
 def parse_md_filename(md_filename: str) -> str:
     stem = Path(md_filename).stem
     if not stem.startswith("response_"):
-        raise ValueError(f"[PARSE ERROR] 잘못된 파일명 형식: {md_filename}")
+        raise ValueError(f"[PARSE ERROR] Invalid filename format: {md_filename}")
 
     flat_path = stem[len("response_"):]
     flat_path = flat_path.replace("_", "/")
@@ -63,7 +63,7 @@ class ResponseParser:
     def extract_and_save_all(self) -> bool:
         md_files = list(self.md_dir.glob("*.md"))
         if not md_files:
-            print(f"[WARN] {self.md_dir} 에 .md 파일이 없습니다.")
+            print(f"[WARN] No .md files found in {self.md_dir}.")
             return False
 
         success_count = 0
@@ -72,6 +72,6 @@ class ResponseParser:
                 parse_response_and_save_code(md_file, self.diff_dir)
                 success_count += 1
             except Exception as e:
-                print(f"[ERROR] {md_file.name} 처리 실패: {e}")
+                print(f"[ERROR] Failed to process {md_file.name}: {e}")
 
         return success_count > 0
