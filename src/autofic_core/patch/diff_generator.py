@@ -39,7 +39,7 @@ class DiffGenerator:
 
     def run(self):
         self.patch_dir.mkdir(parents=True, exist_ok=True)
-        parsed_files = list(self.parsed_dir.rglob("*.*"))  # 하위 폴더 포함 모든 파일 탐색
+        parsed_files = list(self.parsed_dir.rglob("*.*"))  # search all files including subdirectories
 
         for parsed_file in parsed_files:
             if parsed_file.is_dir():
@@ -50,7 +50,7 @@ class DiffGenerator:
                 original_file = self.repo_dir / rel_path
 
                 if not original_file.exists():
-                    print(f"[ WARN ] 원본 없음 : {original_file}")
+                    print(f"[ WARN ] Original file not found: {original_file}")
                     continue
 
                 original_code = original_file.read_text(encoding="utf-8")
@@ -62,9 +62,9 @@ class DiffGenerator:
                     diff_path = self.patch_dir / diff_name
                     with open(diff_path, "w", encoding="utf-8", newline="\n") as f:
                         f.write(diff_text)
-                    print(f"[✓] diff 저장 : {diff_path}")
+                    print(f"[✓] Diff saved: {diff_path}")
                 else:
-                    print(f"[ SKIP ] 변경사항 없음 : {parsed_file.name}")
+                    print(f"[ SKIP ] No changes detected: {parsed_file.name}")
 
             except Exception as e:
-                print(f"[ ERROR ] diff 생성 실패 : {parsed_file.name} - {e}")
+                print(f"[ ERROR ] Failed to generate diff: {parsed_file.name} - {e}")
