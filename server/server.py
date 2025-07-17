@@ -41,7 +41,7 @@ class FlaskProcedure:
                 "sastTool", "rerun", "analysis"
             ]
         )
-   
+
     def add_pr(self, new_pr):
         data = self.load_log()
         data.setdefault("prs", []).append(new_pr)

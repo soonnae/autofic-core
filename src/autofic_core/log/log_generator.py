@@ -115,7 +115,8 @@ class LogGenerator:
             "byClass": byClass,
             "analysis": analysis_text,
             "sastTool": sastTool,
-            "rerun": rerun
+            "rerun": rerun,
+            "update" : datetime.datetime.now().isoformat()
         }
         repo_dict["repo_hash"] = self.get_repo_hash(repo_dict)
         return repo_dict
