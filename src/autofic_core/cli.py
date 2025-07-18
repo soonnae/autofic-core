@@ -40,7 +40,7 @@ def print_divider(title):
     console.print(f"\n[bold magenta]{'-'*20} [ {title} ] {'-'*20}[/bold magenta]\n")
 
 
-def print_summary(repo_url: str, detected_issues_count: int, response_files: list):
+def print_summary(repo_url: str, detected_issues_count: int, output_dir: str, response_files: list):
     print_divider("AutoFiC Summary")
     console.print(f"✔️ [bold]Target Repository:[/bold] {repo_url}")
     console.print(f"✔️ [bold]Files with detected vulnerabilities:[/bold] {detected_issues_count} 개")
