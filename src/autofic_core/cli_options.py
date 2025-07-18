@@ -3,19 +3,19 @@ import click
 EXPLAIN_OPTION = click.option(
     '--explain',
     is_flag = True,
-    help = 'AutoFiC 사용 설명서'
+    help = 'Display usage guide for AutoFiC'
 )
 
 REPO_OPTION = click.option(
     '--repo',
     required=False,
-    help = 'GitHub repository URL'
+    help = 'GitHub repository URL to analyze'
 )
 
 SAVE_DIR_OPTION = click.option(
     '--save-dir',
     default = "artifacts/downloaded_repo",
-    help = '저장할 디렉토리 경로'
+    help = 'Directory path to save analysis results'
 )
 
 SAST_TOOL_CHOICES = ['semgrep', 'codeql', 'eslint', 'snykcode']
@@ -24,26 +24,26 @@ SAST_TOOL_OPTION = click.option(
     type=click.Choice(SAST_TOOL_CHOICES, case_sensitive=False),
     default='semgrep',
     show_default=True,
-    help='사용할 SAST 도구 선택'
+    help='Choose the SAST tool to use'
 )
 
 LLM_OPTION = click.option(
     '--llm',
     is_flag = True,
-    help = 'LLM 응답 생성 및 코드 수정 수행 여부'
+    help = 'Run LLM to generate responses and modify code'
 )
 
 LLM_RETRY_OPTION = click.option(
     '--llm-retry',
     is_flag=True,
     default=False,
-    help='수정된 코드에 대해 LLM 재실행을 수행합니다.'
+    help='Re-run the LLM on modified code for final verification'
 )
 
 PR_OPTION = click.option(
     '--pr',
     is_flag = True,
-    help = '코드 수정 후 자동 PR 생성 여부'
+    help = 'Automatically create a PR after patching the code'
 )
 
 def explain_option(func) :

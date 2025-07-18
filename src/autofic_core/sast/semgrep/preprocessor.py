@@ -49,7 +49,7 @@ class SemgrepPreprocessor:
 
             file_path = (base_dir_path / rel_path).resolve()
             if not file_path.exists():
-                raise FileNotFoundError(f"[ERROR] 파일을 찾을 수 없습니다: {file_path}")
+                raise FileNotFoundError(f"[ERROR] File not found: {file_path}")
 
             full_code = file_path.read_text(encoding='utf-8')
 

@@ -18,9 +18,8 @@ from autofic_core.sast.snykcode.runner import SnykCodeRunner
 from autofic_core.sast.snykcode.preprocessor import SnykCodePreprocessor
 from autofic_core.sast.merger import merge_snippets_by_file
 from autofic_core.llm.prompt_generator import PromptGenerator
-from autofic_core.llm.llm_runner import LLMRunner, save_md_response
+from autofic_core.llm.llm_runner import LLMRunner, save_md_response 
 from autofic_core.llm.retry_prompt_generator import RetryPromptGenerator
-from autofic_core.patch.diff_generator import DiffGenerator
 from autofic_core.llm.response_parser import ResponseParser
 from autofic_core.patch.apply_patch import PatchApplier
 from autofic_core.pr_auto.create_yml import AboutYml
@@ -42,37 +41,38 @@ def print_divider(title):
 
 
 def print_summary(repo_url: str, detected_issues_count: int, output_dir: str, response_files: list):
-    print_divider("AutoFiC 작업 요약")
-    console.print(f"✔️ [bold]분석 대상 저장소:[/bold] {repo_url}")
-    console.print(f"✔️ [bold]취약점이 탐지된 파일:[/bold] {detected_issues_count} 개")
+    print_divider("AutoFiC Summary")
+    console.print(f"✔️ [bold]Target Repository:[/bold] {repo_url}")
+    console.print(f"✔️ [bold]Files with detected vulnerabilities:[/bold] {detected_issues_count} 개")
 
     if response_files:
         first_file = Path(response_files[0]).name
         last_file = Path(response_files[-1]).name
-        console.print(f"✔️ [bold]저장된 응답 파일:[/bold] {first_file} ~ {last_file}")
+        console.print(f"✔️ [bold]Saved response files:[/bold] {first_file} ~ {last_file}")
     else:
-        console.print(f"✔️ [bold]저장된 응답 파일:[/bold] 없음")
+        console.print(f"✔️ [bold]Saved response files:[/bold] None")
     console.print(f"\n[bold magenta]{'━'*64}[/bold magenta]\n")
 
 
 def print_help_message():
-    click.secho("\n\n [ AutoFiC CLI 사용 설명서 ]", fg="magenta", bold=True)
+    click.secho("\n\n [ AutoFiC CLI Usage Guide ]", fg="magenta", bold=True)
     click.echo("""
 
---explain       AutoFiC 사용 설명서 출력
+--explain       Display AutoFiC usage guide
 
---repo          분석할 GitHub 저장소 URL (필수)
---save-dir      분석 결과를 저장할 디렉토리 (기본: artifacts/downloaded_repo)
+--repo          GitHub repository URL to analyze (required)
+--save-dir      Directory to save analysis results (default: artifacts/downloaded_repo)
 
---sast          Semgrep 기반 정적 분석 실행, 사용할 SAST 도구 선택 (semgrep, codeql, eslint, snyk)
+--sast          Run SAST analysis using selected tool (semgrep, codeql, snyk)
 
---llm           LLM을 통한 취약 코드 수정 및 응답 저장
+--llm           Run LLM to fix vulnerable code and save response
+--llm-retry     Re-run LLM to verify and finalize code
 
-\n※ 사용 예시:
+\n※ Example usage:
     python -m autofic_core.cli --repo https://github.com/user/project --sast --llm
 
-⚠️ 주의사항:
-  - --llm 사용 시 --sast 옵션이 반드시 선행되어야 합니다.
+⚠️ Note:
+  - The --sast option must be run before using --llm or --llm-retry
     """)
 
 
@@ -84,16 +84,16 @@ class RepositoryManager:
         self.handler = GitHubRepoHandler(repo_url=self.repo_url)
 
     def clone(self):
-        print_divider("저장소 다운로드 단계")
+        print_divider("Repository Cloning Stage")
 
         if self.handler.needs_fork:
-            console.print("\n저장소 Fork 시도 중...\n", style="cyan")
+            console.print("\nAttempting to fork the repository...\n", style="cyan")
             self.handler.fork()
             time.sleep(1)
-            console.print("\n[ SUCCESS ] Fork 완료\n", style="green")
+            console.print("\n[ SUCCESS ] Fork completed\n", style="green")
 
         self.clone_path = Path(self.handler.clone_repo(save_dir=str(self.save_dir), use_forked=self.handler.needs_fork))
-        console.print(f"\n[ SUCCESS ] 저장소 클론 완료: {self.clone_path}\n", style="green")
+        console.print(f"\n[ SUCCESS ] Repository cloned successfully: {self.clone_path}\n", style="green")
 
 
 class SASTAnalyzer:
@@ -104,12 +104,12 @@ class SASTAnalyzer:
         self.result_path = None
 
     def run(self):
-        print_divider("SAST 분석 단계")
+        print_divider("SAST Analysis Stage")
 
         if self.tool == "semgrep":
-            console.print("\nSemgrep 분석 시작\n")
+            console.print("\nStarting Semgrep analysis\n")
             with create_progress() as progress:
-                task = progress.add_task("[cyan]Semgrep 분석 진행 중...", total=100)
+                task = progress.add_task("[cyan]Running Semgrep...", total=100)
                 for _ in range(100):
                     progress.update(task, advance=1)
                     time.sleep(0.01)
@@ -119,8 +119,8 @@ class SASTAnalyzer:
                 progress.update(task, completed=100)
 
             if semgrep_result_obj.returncode != 0:
-                console.print(f"\n[ ERROR ] Semgrep 실행 실패 (리턴 코드: {semgrep_result_obj.returncode})\n", style="red")
-                raise RuntimeError("Semgrep 실행 실패")
+                console.print(f"\n[ ERROR ] Semgrep failed (return code: {semgrep_result_obj.returncode})\n", style="red")
+                raise RuntimeError("Semgrep execution failed")
 
             sast_dir = self.save_dir / "sast"
             sast_dir.mkdir(parents=True, exist_ok=True)
@@ -131,7 +131,7 @@ class SASTAnalyzer:
                 self.result_path
             )
 
-            console.print(f"\n[ SUCCESS ] Semgrep 결과 저장 완료 (로그) →  {self.result_path}\n", style="green")
+            console.print(f"\n[ SUCCESS ] Semgrep results saved →  {self.result_path}\n", style="green")
 
             snippets = SemgrepPreprocessor.preprocess(
                 input_json_path=str(self.result_path),
@@ -143,14 +143,14 @@ class SASTAnalyzer:
             with open(merged_path, "w", encoding="utf-8") as f:
                 json.dump([snippet.model_dump() for snippet in merged_snippets], f, indent=2, ensure_ascii=False)
 
-            console.print(f"[ SUCCESS ] 병합된 스니펫 저장 완료 (로그) → {merged_path}\n", style="green")
+            console.print(f"[ SUCCESS ] Merged snippets saved → {merged_path}\n", style="green")
 
             return merged_path
 
         elif self.tool == "codeql":
-            console.print("\nCodeQL 분석 시작\n")
+            console.print("\nStarting CodeQL analysis\n")
             with create_progress() as progress:
-                task = progress.add_task("[cyan]CodeQL 분석 진행 중...", total=100)
+                task = progress.add_task("[cyan]Running CodeQL...", total=100)
                 for _ in range(100):
                     progress.update(task, advance=1)
                     time.sleep(0.01)
@@ -168,7 +168,7 @@ class SASTAnalyzer:
 
             CodeQLPreprocessor.save_json_file(sarif_data, self.result_path)
 
-            console.print(f"\n[ SUCCESS ] CodeQL 결과 저장 완료 (로그) →  {self.result_path}\n", style="green")
+            console.print(f"\n[ SUCCESS ] CodeQL results saved →  {self.result_path}\n", style="green")
 
             snippets = CodeQLPreprocessor.preprocess(
                 input_json_path=str(self.result_path),
@@ -180,14 +180,14 @@ class SASTAnalyzer:
             with open(merged_path, "w", encoding="utf-8") as f:
                 json.dump([snippet.model_dump() for snippet in merged_snippets], f, indent=2, ensure_ascii=False)
 
-            console.print(f"[ SUCCESS ] 병합된 스니펫 저장 완료 (로그) → {merged_path}\n", style="green")
+            console.print(f"[ SUCCESS ] Merged snippets saved → {merged_path}\n", style="green")
 
             return merged_path
 
         if self.tool == "snykcode":
-            console.print("\nSnykCode 분석 시작\n")
+            console.print("\nStarting SnykCode analysis\n")
             with create_progress() as progress:
-                task = progress.add_task("[cyan]SnykCode 분석 진행 중...", total=100)
+                task = progress.add_task("[cyan]Running SnykCode...", total=100)
                 for _ in range(100):
                     progress.update(task, advance=1)
                     time.sleep(0.01)
@@ -205,7 +205,7 @@ class SASTAnalyzer:
                 self.result_path
             )
 
-            console.print(f"\n[ SUCCESS ] SnykCode 결과 저장 완료 (로그) →  {self.result_path}\n", style="green")
+            console.print(f"\n[ SUCCESS ] SnykCode results saved →  {self.result_path}\n", style="green")
 
             snippets = SnykCodePreprocessor.preprocess(
                 input_json_path=str(self.result_path),
@@ -217,7 +217,7 @@ class SASTAnalyzer:
             with open(merged_path, "w", encoding="utf-8") as f:
                 json.dump([snippet.model_dump() for snippet in merged_snippets], f, indent=2, ensure_ascii=False)
 
-            console.print(f"[ SUCCESS ] 병합된 스니펫 저장 완료 (로그) → {merged_path}\n", style="green")
+            console.print(f"[ SUCCESS ] Merged snippets successfully saved → {merged_path}\n", style="green")
 
             return merged_path
 
@@ -234,7 +234,7 @@ class SASTAnalyzer:
             elif isinstance(snippet_data, BaseSnippet):
                 snippet_obj = snippet_data
             else:
-                raise TypeError(f"[ ERROR ] 알 수 없는 snippet 형식: {type(snippet_data)}")
+                raise TypeError(f"[ ERROR ] Unknown snippet type: {type(snippet_data)}")
             
             filename_base = snippet_obj.path.replace("\\", "_").replace("/", "_")
             filename = f"snippet_{filename_base}.json"
@@ -243,7 +243,7 @@ class SASTAnalyzer:
             with open(path, "w", encoding="utf-8") as f_out:
                 json.dump(snippet_obj.snippet, f_out, indent=2, ensure_ascii=False)
 
-        console.print(f"[ SUCCESS ] 스니펫 저장 완료 (로그) → {snippets_dir}\n", style="green")
+        console.print(f"[ SUCCESS ] Snippets saved → {snippets_dir}\n", style="green")
 
 
 class LLMProcessor:
@@ -254,9 +254,10 @@ class LLMProcessor:
         self.tool = tool
         self.llm_output_dir = save_dir / "llm"
         self.parsed_dir = save_dir / "parsed"
+        self.patch_dir = save_dir / "patch"  
 
     def run(self):
-        print_divider("LLM 응답 생성 단계")
+        print_divider("LLM Response Generation Stage")
 
         prompt_generator = PromptGenerator()
         merged_path = self.save_dir / "sast" / "merged_snippets.json"
@@ -268,9 +269,9 @@ class LLMProcessor:
         llm = LLMRunner()
         self.llm_output_dir.mkdir(parents=True, exist_ok=True)
 
-        console.print("\nGPT 응답 생성 및 저장 시작\n")
+        console.print("\nStarting GPT response generation\n")
         with create_progress() as progress:
-            task = progress.add_task("[magenta]LLM 응답 중...", total=len(prompts))
+            task = progress.add_task("[magenta]Generating LLM responses...", total=len(prompts))
             for p in prompts:
                 response = llm.run(p.prompt)
                 save_md_response(response, p, output_dir=self.llm_output_dir)
@@ -278,39 +279,44 @@ class LLMProcessor:
                 time.sleep(0.01)
             progress.update(task, completed=100)
 
-        console.print(f"\n[ SUCCESS ] LLM 응답 저장 완료 (로그) → {self.llm_output_dir}\n", style="green")
+        console.print(f"\n[ SUCCESS ] LLM responses saved → {self.llm_output_dir}\n", style="green")
         return prompts, file_snippets
-
+    
     def retry(self):
-        print_divider("LLM 재실행 단계")
-        console.print("[RETRY] 수정된 코드에 대해 GPT 재실행 중...\n")
+        print_divider("LLM Retry Stage")
 
-        retry_output_dir = self.save_dir / "llm_retry"
-        parsed_dir = self.save_dir / "parsed"  # 기존 응답
+        retry_prompt_generator = RetryPromptGenerator(parsed_dir=self.parsed_dir)
+        retry_prompts = retry_prompt_generator.generate_prompts()
+
+        console.print("[RETRY] Regenerating GPT responses for modified files...\n")
+
+        llm = LLMRunner() 
+        retry_output_dir = self.save_dir / "retry_llm"
         retry_output_dir.mkdir(parents=True, exist_ok=True)
 
-        diff_gen = DiffGenerator(repo_dir=self.repo_path, parsed_dir=parsed_dir, patch_dir=self.save_dir / "retry_diff")
-        diff_gen.run()
+        console.print("\nStarting GPT retry response generation\n")
+        with create_progress() as progress:
+            task = progress.add_task("[magenta]Retrying LLM responses...", total=len(retry_prompts))
+            for prompt in retry_prompts:
+                response = llm.run(prompt.prompt)
+                save_md_response(response, prompt, output_dir=retry_output_dir)
+                progress.update(task, advance=1)
+                time.sleep(0.01)
+            progress.update(task, completed=100)
 
-        retry_prompts = RetryPromptGenerator().generate_prompts(diff_gen.load_diffs())
+        console.print(f"\n[ SUCCESS ] Retry LLM responses saved → {retry_output_dir}\n", style="green")
 
-        llm = LLMRunner()
-        for prompt in retry_prompts:
-            response = llm.run(prompt.prompt)
-            save_md_response(response, prompt.snippet, output_dir=retry_output_dir)
-
-        console.print(f"\n[ SUCCESS ] 재검토 GPT 응답 저장 완료 → {retry_output_dir}\n", style="green")
-
+        return retry_prompts, retry_output_dir
+    
     def extract_and_save_parsed_code(self):
-        print_divider("LLM 응답 코드 추출 및 저장 단계")
+        print_divider("LLM Response Parsing Stage")
         parser = ResponseParser(md_dir=self.llm_output_dir, diff_dir=self.parsed_dir)
         success = parser.extract_and_save_all()
 
         if success:
-            console.print(f"\n[ SUCCESS ] 파싱된 코드 저장 완료 (로그) → {self.parsed_dir}\n", style="green")
+            console.print(f"\n[ SUCCESS ] Parsed code saved→ {self.parsed_dir}\n", style="green")
         else:
-            console.print(f"\n[ WARN ] 파싱된 코드가 없습니다.\n", style="yellow")
-
+            console.print(f"\n[ WARN ] No parsable content found in LLM responses.\n", style="yellow")
 
 class PatchManager:
     def __init__(self, parsed_dir: Path, patch_dir: Path, repo_dir: Path):
@@ -319,7 +325,7 @@ class PatchManager:
         self.repo_dir = repo_dir
 
     def run(self):
-        print_divider("Diff 생성 및 패치 적용 단계")
+        print_divider("Diff Generation and Patch Application Stage")
 
         from autofic_core.patch.diff_generator import DiffGenerator
         diff_generator = DiffGenerator(
@@ -328,7 +334,8 @@ class PatchManager:
             patch_dir=self.patch_dir,
         )
         diff_generator.run()
-        console.print(f"\n[ SUCCESS ] Diff 생성 완료 → {self.patch_dir}\n", style="green")
+        time.sleep(0.1)
+        console.print(f"\n[ SUCCESS ] Diff files generated → {self.patch_dir}\n", style="green")
 
         patch_applier = PatchApplier(
             patch_dir=self.patch_dir,
@@ -338,9 +345,9 @@ class PatchManager:
         success = patch_applier.apply_all()
 
         if success:
-            console.print(f"\n[ SUCCESS ] 모든 패치 적용 완료 → {self.repo_dir}\n", style="green")
+            console.print(f"\n[ SUCCESS ] All patches successfully applied → {self.repo_dir}\n", style="green")
         else:
-            console.print(f"\n[ WARN ] 일부 패치 적용 실패 발생 → {self.repo_dir}\n", style="yellow")
+            console.print(f"\n[ WARN ] Some patches failed to apply → {self.repo_dir}\n", style="yellow")
 
 
 class AutoFiCPipeline:
@@ -371,7 +378,7 @@ class AutoFiCPipeline:
 
         if self.llm:
             if not sast_result_path:
-                raise RuntimeError("LLM 실행 시 SAST 결과 필요")
+                raise RuntimeError("SAST results are required before running LLM.")
 
             self.llm_processor = LLMProcessor(sast_result_path, self.repo_manager.clone_path, self.save_dir, self.sast_tool)
             prompts, file_snippets = self.llm_processor.run()
@@ -392,24 +399,44 @@ class AutoFiCPipeline:
             
         if self.llm_retry:
             if not self.llm_processor:
-                raise RuntimeError("LLM 재실행은 --llm 실행 후만 수행됩니다.")
-            self.llm_processor.retry()
+                raise RuntimeError("LLM retry can only be executed after the initial LLM run.")            
 
-SAST_TOOL_CHOICES = ['semgrep', 'codeql', 'eslint', 'snykcode']
+            patch_manager = PatchManager(self.llm_processor.parsed_dir, self.llm_processor.patch_dir, self.repo_manager.clone_path)
+            patch_manager.run()
+            
+            retry_prompts, retry_output_dir = self.llm_processor.retry()
+            self.llm_processor.parsed_dir = self.save_dir / "retry_parsed"
+            self.llm_processor.llm_output_dir = retry_output_dir
+            self.llm_processor.extract_and_save_parsed_code()
+
+            prompt_generator = RetryPromptGenerator(parsed_dir=self.llm_processor.parsed_dir)
+            unique_file_paths = prompt_generator.get_unique_file_paths(retry_prompts)
+            
+            llm_output_dir = self.llm_processor.llm_output_dir
+            response_files = sorted([f.name for f in llm_output_dir.glob("response_*.md")])
+            
+            print_summary(
+                repo_url=self.repo_url,
+                detected_issues_count=len(unique_file_paths),
+                output_dir=str(retry_output_dir),
+                response_files=response_files
+            )
+
+SAST_TOOL_CHOICES = ['semgrep', 'codeql', 'snykcode']
 @click.command()
-@click.option('--explain', is_flag=True, help="AutoFiC 사용 설명서 출력")
-@click.option('--repo', required=False, help="분석할 GitHub 저장소 URL (필수)")
-@click.option('--save-dir', default="artifacts/downloaded_repo", help="분석 결과 저장 디렉토리")
+@click.option('--explain', is_flag=True, help="Print AutoFiC usage guide.")
+@click.option('--repo', required=False, help="Target GitHub repository URL to analyze (required).")
+@click.option('--save-dir', default="artifacts/downloaded_repo", help="Directory to save analysis results.")
 @click.option(
     '--sast',
     type=click.Choice(SAST_TOOL_CHOICES, case_sensitive=False),
     required=False,
-    help='사용할 SAST 도구 선택 (semgrep, codeql, eslint, snykcode 중 하나)'
+    help='Select SAST tool to use (choose one of: semgrep, codeql, snykcode).'
 )
-@click.option('--llm', is_flag=True, help="LLM을 통한 취약 코드 수정 및 응답 저장")
-@click.option('--llm-retry', is_flag=True, help="LLM 재실행을 통한 최종 확인 및 수정")
-@click.option('--patch', is_flag=True, help="diff 생성 및 git apply로 패치")
-@click.option('--pr', is_flag=True, help="PR 자동 생성까지 수행")
+@click.option('--llm', is_flag=True, help="Run LLM to fix vulnerable code and save responses.")
+@click.option('--llm-retry', is_flag=True, help="Re-run LLM for final verification and fixes.")
+@click.option('--patch', is_flag=True, help="Generate diffs and apply patches using git.")
+@click.option('--pr', is_flag=True, help="Automatically create a pull request.")
 
 
 def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
@@ -421,26 +448,27 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
         return
 
     if not repo:
-        click.echo(" --repo는 필수입니다!", err=True)
+        click.echo(" --repo is required!", err=True)
         return
 
     if llm and llm_retry:
-        click.secho("[ ERROR ] --llm-retry 옵션은 --llm 옵션이 자동으로 함께 실행됩니다!", fg="red")
+        click.secho("[ ERROR ]  The --llm-retry option includes --llm automatically. Do not specify both!", fg="red")
         return
 
     if not sast and (llm or llm_retry):
-        click.secho("[ ERROR ] --llm 또는 --llm-retry 옵션은 --sast 없이 단독 사용 불가!", fg="red")
+        click.secho("[ ERROR ] The --llm or --llm-retry options cannot be used without --sast!", fg="red")
         return
 
     try:
         llm_flag = llm or llm_retry
         pipeline = AutoFiCPipeline(repo, Path(save_dir), sast, llm=llm_flag, llm_retry=llm_retry, sast_tool=sast.lower())
         pipeline.run()
+        repo_dir = pipeline.repo_manager.clone_path
 
         if patch:
-            parsed_dir = Path(save_dir) / "parsed"
-            patch_dir = Path(save_dir) / "patch"
-            repo_dir = pipeline.repo_manager.clone_path
+            parsed_dir = Path(save_dir) / "retry_parsed" if llm_retry else Path(save_dir) / "parsed"
+            retry_patch_dir = Path(save_dir) / "retry_patch"
+            patch_dir = retry_patch_dir if llm_retry else Path(save_dir) / "patch"
 
             patch_manager = PatchManager(parsed_dir, patch_dir, repo_dir)
             patch_manager.run()

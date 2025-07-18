@@ -18,10 +18,11 @@ import os
 import click
 from pathlib import Path
 from openai import OpenAI
+from typing import Any
 from dotenv import load_dotenv
 from autofic_core.errors import LLMExecutionError
 from autofic_core.sast.merger import merge_snippets_by_file
-from autofic_core.llm.prompt_generator import PromptGenerator, GeneratedPrompt
+from autofic_core.llm.prompt_generator import PromptGenerator
 
 load_dotenv()
 
@@ -43,14 +44,21 @@ class LLMRunner:
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
-            click.echo(f"[LLM ERROR] 모델 요청 실패 - {e}")
+            click.echo(f"[LLM ERROR] Failed to request model - {e}")
             raise LLMExecutionError(str(e))
 
 
-def save_md_response(content: str, prompt_obj: GeneratedPrompt, output_dir: Path) -> str:
+def save_md_response(content: str, prompt_obj: Any, output_dir: Path) -> str:
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    path = Path(prompt_obj.snippet.path)
+    
+    try:
+        if hasattr(prompt_obj, "snippet"):
+            path = Path(prompt_obj.snippet.path)
+        else:
+            path = Path(prompt_obj.path)
+    except Exception as e:
+        raise RuntimeError(f"[ERROR] 저장 경로 추출 실패: {e}")
+    
     parts = path.parts
 
     # artifacts, downloaded_repo 같은 상위 디렉토리 제거
@@ -82,7 +90,7 @@ def run_llm_for_semgrep_results(
     elif tool == "snykcode":
         from autofic_core.sast.snykcode.preprocessor import SnykCodePreprocessor as Preprocessor
     else:
-        raise ValueError(f"지원되지 않는 SAST 도구: {tool}")
+        raise ValueError(f"Unsupported SAST tool: {tool}")
     
     # Semgrep 결과 JSON에서 스니펫 추출
     raw_snippets = Preprocessor.preprocess(semgrep_json_path)
@@ -98,8 +106,8 @@ def run_llm_for_semgrep_results(
     # 프롬프트별로 LLM 실행 및 응답 저장
     for generated_prompt in prompts:
         try:
-            click.echo(f"[DEBUG] Prompt 길이 (문자 수): {len(generated_prompt.prompt)}")
+            click.echo(f"[DEBUG] Prompt length (characters): {len(generated_prompt.prompt)}")
             response = runner.run(generated_prompt.prompt)
             save_md_response(response, generated_prompt, output_dir)
         except LLMExecutionError as e:
-            click.echo(f"[ERROR] LLM 처리 실패: {e}")
+            click.echo(f"[ERROR] Failed to process with LLM: {e}")

@@ -38,7 +38,7 @@ class PatchApplier:
         patch_files = sorted(self.patch_dir.glob("*.diff"))
 
         if not patch_files:
-            click.secho(f"[ WARN ] {self.patch_dir} 에 .diff 파일이 없습니다.", fg="yellow")
+            click.secho(f"[ WARN ] No .diff files found in {self.patch_dir}", fg="yellow")
             return False
 
         failed_patches = []
@@ -49,7 +49,7 @@ class PatchApplier:
                 failed_patches.append(patch_file)
 
         if failed_patches:
-            click.secho(f"[ INFO ] {len(failed_patches)}개 패치 실패 → parsed 파일로 덮어쓰기 시도 (로그)", fg="cyan")
+            click.secho(f"[ INFO ] {len(failed_patches)} patches failed → trying overwrite from parsed (see logs)", fg="cyan")
             for patch_file in failed_patches:
                 self.overwrite_with_parsed(patch_file)
 
@@ -65,15 +65,15 @@ class PatchApplier:
             )
 
             if result.returncode == 0:
-                click.secho(f"[ SUCCESS ] 패치 적용 완료 : {patch_file.name}", fg="green")
+                click.secho(f"[ SUCCESS ] Patch applied: {patch_file.name}", fg="green")
                 return True
             else:
-                click.secho(f"[ FAIL ] 패치 적용 실패 : {patch_file.name}", fg="yellow")
+                click.secho(f"[ FAIL ] Patch failed: {patch_file.name}", fg="yellow")
                 click.secho(result.stderr, fg="yellow")
                 return False
 
         except Exception as e:
-            click.secho(f"[ ERROR ] {patch_file.name} 적용 중 예외 발생 : {e}", fg="red")
+            click.secho(f"[ ERROR ] Exception while applying {patch_file.name}: {e}", fg="red")
             return False
 
     def parsed_diff_apply(self, patch_file: Path) -> bool:
@@ -86,20 +86,20 @@ class PatchApplier:
                 break
 
         if not matched_file:
-            click.secho(f"[ ERROR ] parsed 디렉토리 내 대상 파일 찾기 실패 : {stem}", fg="red")
+            click.secho(f"[ ERROR ] Could not find matching file in parsed directory: {stem}", fg="red")
             return False
 
         try:
             relative_path = matched_file.relative_to(self.parsed_dir)
         except ValueError:
-            click.secho(f"[ ERROR ] parsed 내부 경로 추출 실패 → {matched_file}", fg="red")
+            click.secho(f"[ ERROR ] Failed to extract relative path: {matched_file}", fg="red")
             return False
 
         original_file = self.repo_dir / relative_path
         parsed_file = self.parsed_dir / relative_path
 
         if not original_file.exists():
-            click.secho(f"[ ERROR ] 원본 파일 없음 → {original_file}", fg="red")
+            click.secho(f"[ ERROR ] Original file does not exist: {original_file}", fg="red")
             return False
 
         fallback_diff = self.fallback_dir / f"parsed_{relative_path.with_suffix('.diff').name}"
@@ -122,15 +122,15 @@ class PatchApplier:
             )
 
             if result.returncode == 0:
-                click.secho(f"[ SUCCESS ] parsed diff 적용 완료 : {fallback_diff.name}", fg="green")
+                click.secho(f"[ SUCCESS ] Fallback diff applied: {fallback_diff.name}", fg="green")
                 return True
             else:
-                click.secho(f"[ FAIL ] parsed diff 적용 실패 : {fallback_diff.name}", fg="red")
+                click.secho(f"[ FAIL ] Fallback diff failed: {fallback_diff.name}", fg="red")
                 click.secho(result.stderr, fg="red")
                 return False
 
         except Exception as e:
-            click.secho(f"[ ERROR ] parsed diff 생성 실패 : {e}", fg="red")
+            click.secho(f"[ ERROR ] Failed to generate fallback diff: {e}", fg="red")
             return False
 
     def overwrite_with_parsed(self, patch_file: Path) -> bool:
@@ -143,25 +143,25 @@ class PatchApplier:
                 break
 
         if not matched_file:
-            click.secho(f"[ ERROR ] parsed 디렉토리 내 대상 파일 찾기 실패 : {stem}", fg="red")
+            click.secho(f"[ ERROR ] Could not find matching file in parsed directory: {stem}", fg="red")
             return False
 
         try:
             relative_path = matched_file.relative_to(self.parsed_dir)
         except ValueError:
-            click.secho(f"[ ERROR ] parsed 내부 경로 추출 실패 → {matched_file}", fg="red")
+            click.secho(f"[ ERROR ] Failed to extract relative path: {matched_file}", fg="red")
             return False
 
         repo_file = self.repo_dir / relative_path
 
         if not repo_file.exists():
-            click.secho(f"[ ERROR ] repo 내 원본 파일 없음 → {repo_file}", fg="red")
+            click.secho(f"[ ERROR ] Original file does not exist in repo: {repo_file}", fg="red")
             return False
 
         try:
             shutil.copyfile(matched_file, repo_file)
-            click.secho(f"[ SUCCESS ] repo 파일 덮어쓰기 완료 : {repo_file}", fg="green")
+            click.secho(f"[ SUCCESS ] Overwrote repo file: {repo_file}", fg="green")
             return True
         except Exception as e:
-            click.secho(f"[ ERROR ] repo 파일 덮어쓰기 실패 : {e}", fg="red")
+            click.secho(f"[ ERROR ] Failed to overwrite repo file: {e}", fg="red")
             return False

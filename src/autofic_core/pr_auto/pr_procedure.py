@@ -266,9 +266,14 @@ class PRProcedure:
             return
 
     def generate_markdown(self, snippets: List[BaseSnippet]) -> str:
-        def _blockquote(text: str) -> str:
-            return "\n".join(f"> {line.lstrip()}" for line in text.strip().splitlines())
-
+        def get_severity_emoji(level: str) -> str:
+            level = level.upper()
+            return {
+                "ERROR": "🛑 ERROR",
+                "WARNING": "⚠️ WARNING",
+                "NOTE": "💡 NOTE"
+            }.get(level, level)
+        
         def generate_markdown_from_llm(llm_path: str) -> str:
             """
             Parses an LLM-generated markdown response and formats it into a GitHub PR body.
@@ -290,7 +295,7 @@ class PRProcedure:
                     "Recommended Fix": "",
                     "References": ""
                 }
-
+            
             sections = {
                 "Vulnerability": "",
                 "Risks": "",
@@ -299,11 +304,11 @@ class PRProcedure:
             }
 
             pattern = re.compile(
-                r"1\. 취약점 설명\s*[:：]?(.*?)"
-                r"2\. 예상 위험\s*[:：]?(.*?)"
-                r"3\. 개선 방안\s*[:：]?(.*?)"
-                r"(?:4\. 최종 수정된 전체 코드.*?)?"
-                r"5\. 참고사항\s*[:：]?(.*)",
+                r"1\. Vulnerability Description\s*[:：]?\s*(.*?)\s*"
+                r"2\. Potential Risk\s*[:：]?\s*(.*?)\s*"
+                r"3\. Recommended Fix\s*[:：]?\s*(.*?)\s*"
+                r"(?:4\. Final Modified Code.*?\s*)?"
+                r"5\. Additional Notes\s*[:：]?\s*(.*)",
                 re.DOTALL
             )
 
@@ -315,36 +320,64 @@ class PRProcedure:
                 sections["References"] = match.group(4).strip()
 
             return sections
-        
+
         grouped_by_file = defaultdict(list)
         for item in snippets:
-            filename = os.path.basename(item.path or "Unknown")
+            filename = os.path.relpath(item.path, self.save_dir).replace("\\", "/")
             grouped_by_file[filename].append(item)
 
-        md = ["## 🔏 Security Patch Summary\n"]
+        md = [
+            "## 🔧 About This Pull Request",
+            "This patch was automatically created by **[AutoFiC](https://autofic.github.io)**,\nan open-source framework that combines **static analysis tools** with **AI-driven remediation**.",
+            "\nUsing **Semgrep**, **CodeQL**, and **Snyk Code**, AutoFiC detected potential **security flaws** and applied **verified fixes**.",
+            "Each patch includes **contextual explanations** powered by a **large language model** to support **review and decision-making**.",
+            "",
+            "## 🔐 Summary of Security Fixes",
+        ]
+
         if not grouped_by_file:
             md.append("No vulnerabilities detected. No changes made.\n")
             return "\n".join(md)
-
+        
+        md.append("### Overview\n")
+        md.append(f"> Detected by: **{self.tool.upper()}**\n")
+        md.append("| File | Total Issues |")
+        md.append("|------|---------------|")
+        for filename, items in grouped_by_file.items():
+            md.append(f"| `{filename}` | **{len(items)}** |")
+        
         file_idx = 1
         for filename, items in grouped_by_file.items():
-            md.append(f"### 🗂️ {file_idx}. `{filename}`")
-            md.append(f"#### 🔎 SAST Analysis Summary")
-            for vuln_idx, item in enumerate(items, 1):
-                vuln = item.vulnerability_class[0] if item.vulnerability_class else "N/A"
-                md.append(f"> #### {file_idx}-{vuln_idx}. [Vulnerability] {vuln}")
-                if item.start_line == item.end_line:
-                    md.append(f"> - #️⃣ Line: {item.start_line}")
-                else:
-                    md.append(f"> - #️⃣ Lines: {item.start_line} ~ {item.end_line}")                
-                md.append(f"> - 🛡️ Severity: {item.severity}")
-                if item.cwe:
-                    md.append(f"> - 🔖 {', '.join(item.cwe)}")
-                if item.references:
-                    for ref in item.references:
-                        md.append(f"> - 🔗 Reference: {ref}")
-                md.append(f"> - ✍️ Message: {item.message.strip()}")
+            md.append(f"### {file_idx}. `{filename}`")
+            md.append("#### 🧩 SAST Analysis Summary")
+            has_cwe = any(item.cwe for items in grouped_by_file.values() for item in items)
+            has_ref = any(item.references for items in grouped_by_file.values() for item in items)
 
+            header = ["Line", "Type", "Level"]
+            if has_cwe:
+                header.append("CWE")
+            if has_ref:
+                header.append("Ref")
+            md.append("| " + " | ".join(header) + " |")
+            md.append("|" + "|".join(["-" * len(col) for col in header]) + "|")
+
+            for item in items:
+                line_info = f"{item.start_line}" if item.start_line == item.end_line else f"{item.start_line}~{item.end_line}"
+                vuln = item.vulnerability_class[0] if item.vulnerability_class else "N/A"
+                severity = item.severity.upper() if item.severity else "N/A"
+                
+                row = [line_info, vuln, get_severity_emoji(severity)]
+
+                if has_cwe:
+                    cwe = item.cwe[0].split(":")[0] if item.cwe else "N/A"
+                    row.append(cwe)
+                if has_ref:
+                    ref = item.references[0] if item.references else ""
+                    ref_link = f"[🔗]({ref})" if ref else ""
+                    row.append(ref_link)
+
+                md.append("| " + " | ".join(row) + " |")
+            
             llm_dir = os.path.abspath(os.path.join(self.save_dir, '..', 'llm'))
             for eachname in os.listdir(llm_dir):
                 if not eachname.endswith('.md'):
@@ -357,26 +390,28 @@ class PRProcedure:
                     llm_path = os.path.join(llm_dir, eachname)
                     llm_summary = generate_markdown_from_llm(llm_path)
                     if llm_summary:
-                        md.append(f"#### 🤖 LLM Analysis Summary")
+                        md.append("#### 📝 LLM Analysis\n")
                         if llm_summary["Vulnerability"]:
-                            md.append(f"> #### 🐞 Vulnerability Description")
-                            md.append(_blockquote(llm_summary["Vulnerability"]))
-                        if llm_summary["Risks"]:
-                            md.append(f"> #### ⚠️ Potential Risks")
-                            md.append(_blockquote(llm_summary["Risks"]))
+                            md.append("#### 🔸 Vulnerability Description")
+                            md.append(llm_summary["Vulnerability"].strip())
                         if llm_summary["Recommended Fix"]:
-                            md.append(f"> #### 🛠 Recommended Fix")     
-                            md.append(_blockquote(llm_summary["Recommended Fix"]))                         
+                            md.append("#### 🔸 Recommended Fix")
+                            md.append(llm_summary["Recommended Fix"].strip())
                         if llm_summary["References"]:
-                            md.append(f"> #### 📎 References")
-                            md.append(_blockquote(llm_summary["References"]))  
-                        break
-                    
+                            md.append("#### 🔸 Additional Notes")
+                            md.append(llm_summary["References"].strip())
+
             file_idx += 1
 
-        md.append("\n### 💉 Fix Details\n")
-        md.append("All vulnerable code paths have been refactored to use parameterized queries or input sanitization as recommended in the references above. Please refer to the diff for exact code changes.\n")
-        md.append("---\n")
+        md.append("\n## 🛠 Fix Summary\n")
+        md.append(
+            "All identified **vulnerabilities** have been **remediated** following **security best practices** "
+            "such as **parameterized queries** and **proper input validation**. "
+            "Please refer to the **diff tab** for detailed **code changes**.\n"
+        )
+        md.append(
+            "If you have **questions** or **feedback** regarding this **automated patch**, feel free to reach out via **[AutoFiC GitHub](https://github.com/autofic)**.\n"
+        )
         return "\n".join(md)    
 
     def contains_all(self, text, *keywords):
