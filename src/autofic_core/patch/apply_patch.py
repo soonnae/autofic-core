@@ -17,8 +17,8 @@
 import subprocess
 from pathlib import Path
 import shutil
-import click
-
+from rich.console import Console
+from autofic_core.errors import PatchWarningMessages, PatchErrorMessages, PatchFailMessages
 
 class PatchApplier:
     def __init__(
@@ -33,12 +33,13 @@ class PatchApplier:
         self.parsed_dir = Path(parsed_dir) if parsed_dir else self.patch_dir.parent / "parsed"
         self.fallback_dir = Path(fallback_dir) if fallback_dir else self.patch_dir / "fallbacks"
         self.fallback_dir.mkdir(exist_ok=True, parents=True)
+        self.console = Console()
 
     def apply_all(self) -> bool:
         patch_files = sorted(self.patch_dir.glob("*.diff"))
 
         if not patch_files:
-            click.secho(f"[ WARN ] No .diff files found in {self.patch_dir}", fg="yellow")
+            self.console.print(f"[yellow][ WARN ] No .diff files found in {self.patch_dir}[/yellow]")
             return False
 
         failed_patches = []
@@ -49,7 +50,7 @@ class PatchApplier:
                 failed_patches.append(patch_file)
 
         if failed_patches:
-            click.secho(f"[ INFO ] {len(failed_patches)} patches failed → trying overwrite from parsed (see logs)", fg="cyan")
+            self.console.print(f"[cyan][ INFO ] {len(failed_patches)} patches failed → trying overwrite from parsed (see logs)[/cyan]")
             for patch_file in failed_patches:
                 self.overwrite_with_parsed(patch_file)
 
@@ -65,15 +66,15 @@ class PatchApplier:
             )
 
             if result.returncode == 0:
-                click.secho(f"[ SUCCESS ] Patch applied: {patch_file.name}", fg="green")
+                self.console.print(f"[green][✓] Patch applied: {patch_file.name}[/green]")
                 return True
             else:
-                click.secho(f"[ FAIL ] Patch failed: {patch_file.name}", fg="yellow")
-                click.secho(result.stderr, fg="yellow")
+                self.console.print(PatchFailMessages.PATCH_FAILED.format(patch_file.name), style="yellow")
+                self.console.print(result.stderr, style="yellow")
                 return False
 
         except Exception as e:
-            click.secho(f"[ ERROR ] Exception while applying {patch_file.name}: {e}", fg="red")
+            self.console.print(PatchErrorMessages.PATCH_EXCEPTION.format(patch_file.name, e), style="red")
             return False
 
     def parsed_diff_apply(self, patch_file: Path) -> bool:
@@ -86,20 +87,20 @@ class PatchApplier:
                 break
 
         if not matched_file:
-            click.secho(f"[ ERROR ] Could not find matching file in parsed directory: {stem}", fg="red")
+            self.console.print(PatchWarningMessages.PARSED_FILE_NOT_FOUND.format(stem), style="yellow")
             return False
 
         try:
             relative_path = matched_file.relative_to(self.parsed_dir)
         except ValueError:
-            click.secho(f"[ ERROR ] Failed to extract relative path: {matched_file}", fg="red")
+            self.console.print(PatchWarningMessages.RELATIVE_PATH_EXTRACTION_FAILED.format(matched_file), style="yellow")
             return False
 
         original_file = self.repo_dir / relative_path
         parsed_file = self.parsed_dir / relative_path
 
         if not original_file.exists():
-            click.secho(f"[ ERROR ] Original file does not exist: {original_file}", fg="red")
+            self.console.print(PatchWarningMessages.ORIGINAL_FILE_MISSING.format(original_file), style="yellow")
             return False
 
         fallback_diff = self.fallback_dir / f"parsed_{relative_path.with_suffix('.diff').name}"
@@ -122,15 +123,15 @@ class PatchApplier:
             )
 
             if result.returncode == 0:
-                click.secho(f"[ SUCCESS ] Fallback diff applied: {fallback_diff.name}", fg="green")
+                self.console.print(f"[green][✓] Fallback diff applied: {fallback_diff.name}[/green]")
                 return True
             else:
-                click.secho(f"[ FAIL ] Fallback diff failed: {fallback_diff.name}", fg="red")
-                click.secho(result.stderr, fg="red")
+                self.console.print(PatchFailMessages.FALLBACK_APPLY_FAILED.format(fallback_diff.name), style="red")
+                self.console.print(result.stderr, style="red")
                 return False
 
         except Exception as e:
-            click.secho(f"[ ERROR ] Failed to generate fallback diff: {e}", fg="red")
+            self.console.print(PatchErrorMessages.FALLBACK_DIFF_FAILED.format(e), style="red")
             return False
 
     def overwrite_with_parsed(self, patch_file: Path) -> bool:
@@ -143,25 +144,25 @@ class PatchApplier:
                 break
 
         if not matched_file:
-            click.secho(f"[ ERROR ] Could not find matching file in parsed directory: {stem}", fg="red")
+            self.console.print(PatchWarningMessages.PARSED_FILE_NOT_FOUND.format(stem), style="yellow")
             return False
 
         try:
             relative_path = matched_file.relative_to(self.parsed_dir)
         except ValueError:
-            click.secho(f"[ ERROR ] Failed to extract relative path: {matched_file}", fg="red")
+            self.console.print(PatchWarningMessages.RELATIVE_PATH_EXTRACTION_FAILED.format(matched_file), style="yellow")
             return False
 
         repo_file = self.repo_dir / relative_path
 
         if not repo_file.exists():
-            click.secho(f"[ ERROR ] Original file does not exist in repo: {repo_file}", fg="red")
+            self.console.print(PatchWarningMessages.OVERWRITE_FILE_MISSING.format(repo_file), style="yellow")
             return False
 
         try:
             shutil.copyfile(matched_file, repo_file)
-            click.secho(f"[ SUCCESS ] Overwrote repo file: {repo_file}", fg="green")
+            self.console.print(f"[green][✓] Overwrote repo file: {repo_file}[/green]")
             return True
         except Exception as e:
-            click.secho(f"[ ERROR ] Failed to overwrite repo file: {e}", fg="red")
+            self.console.print(PatchErrorMessages.OVERWRITE_FAILED.format(e), style="red")
             return False
