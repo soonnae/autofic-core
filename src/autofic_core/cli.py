@@ -314,7 +314,7 @@ class LLMProcessor:
         success = parser.extract_and_save_all()
 
         if success:
-            console.print(f"\n[ SUCCESS ] Parsed code saved→ {self.parsed_dir}\n", style="green")
+            console.print(f"\n[ SUCCESS ] Parsed code saved → {self.parsed_dir}\n", style="green")
         else:
             console.print(f"\n[ WARN ] No parsable content found in LLM responses.\n", style="yellow")
 
@@ -335,7 +335,6 @@ class PatchManager:
         )
         diff_generator.run()
         time.sleep(0.1)
-        console.print(f"\n[ SUCCESS ] Diff files generated → {self.patch_dir}\n", style="green")
 
         patch_applier = PatchApplier(
             patch_dir=self.patch_dir,
@@ -345,7 +344,7 @@ class PatchManager:
         success = patch_applier.apply_all()
 
         if success:
-            console.print(f"\n[ SUCCESS ] All patches successfully applied → {self.repo_dir}\n", style="green")
+            console.print(f"\n[ SUCCESS ] All patches successfully applied\n", style="green")
         else:
             console.print(f"\n[ WARN ] Some patches failed to apply → {self.repo_dir}\n", style="yellow")
 
