@@ -2,6 +2,7 @@ import click
 import json
 import time
 import os
+import sys
 from pathlib import Path
 from rich.console import Console
 from pyfiglet import Figlet
@@ -144,7 +145,11 @@ class SASTAnalyzer:
                 json.dump([snippet.model_dump() for snippet in merged_snippets], f, indent=2, ensure_ascii=False)
 
             console.print(f"[ SUCCESS ] Merged snippets saved → {merged_path}\n", style="green")
-
+            
+            if not merged_snippets:
+                console.print("[INFO] No vulnerabilities found during SAST. Exiting early.\n", style="cyan")
+                return None
+            
             return merged_path
 
         elif self.tool == "codeql":
@@ -265,7 +270,11 @@ class LLMProcessor:
             merged_data = json.load(f)
         file_snippets = [BaseSnippet(**item) for item in merged_data]
         prompts = prompt_generator.generate_prompts(file_snippets)
-
+        
+        if not prompts:
+            console.print("[INFO] No valid prompts generated. Skipping LLM stage.\n", style="cyan")
+            return [], []
+        
         llm = LLMRunner()
         self.llm_output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -374,14 +383,31 @@ class AutoFiCPipeline:
             tool=self.sast_tool,
             )
             sast_result_path = self.sast_analyzer.run()
+            
+            if not sast_result_path:
+                sys.exit(0)
+
             self.sast_analyzer.save_snippets(sast_result_path)
 
         if self.llm:
             if not sast_result_path:
                 raise RuntimeError("SAST results are required before running LLM.")
+            
+            merged_path = self.save_dir / "sast" / "merged_snippets.json"
+            if not merged_path.exists():
+                console.print("[INFO] No merged_snippets.json file found. Skipping LLM stage.\n", style="cyan")
+                sys.exit(0)
+
+            with open(merged_path, "r", encoding="utf-8") as f:
+                merged_data = json.load(f)
 
             self.llm_processor = LLMProcessor(sast_result_path, self.repo_manager.clone_path, self.save_dir, self.sast_tool)
             prompts, file_snippets = self.llm_processor.run()
+            
+            if not prompts:
+                console.print("[INFO] No valid prompts returned from LLM processor. Exiting pipeline early.\n", style="cyan")
+                sys.exit(0)
+
             self.llm_processor.extract_and_save_parsed_code()
 
             prompt_generator = PromptGenerator()
