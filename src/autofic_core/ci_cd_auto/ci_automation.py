@@ -35,23 +35,23 @@ class Ci_Automate:
         self.save_dir = os.environ.get("RESULT_SAVE_DIR", os.path.abspath("result"))
 
     def run_autofic(self, repo_url):
-    print(f"\n[RUN] {repo_url}")
-    cmd = [
-        'python', '-m', 'autofic_core.cli',
-        '--repo', repo_url,
-        '--save-dir', self.save_dir,
-        '--sast',
-        '--rule', 'p/javascript'
-    ]
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        print(result.stdout)
-        print(result.stderr)
-    except subprocess.CalledProcessError as e:
-        print("=== CalledProcessError ===")
-        print("stdout:", e.stdout)
-        print("stderr:", e.stderr)
-        raise
+        print(f"\n[RUN] {repo_url}")
+        cmd = [
+            'python', '-m', 'autofic_core.cli',
+            '--repo', repo_url,
+            '--save-dir', self.save_dir,
+            '--sast',
+            '--rule', 'p/javascript'
+        ]
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            print(result.stdout)
+            print(result.stderr)
+        except subprocess.CalledProcessError as e:
+            print("=== CalledProcessError ===")
+            print("stdout:", e.stdout)
+            print("stderr:", e.stderr)
+            raise
 
     def main(self):
         """
