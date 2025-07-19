@@ -19,6 +19,7 @@
 """
 
 import subprocess
+import os
 
 class Ci_Automate:
     """
@@ -31,24 +32,27 @@ class Ci_Automate:
         self.REPO_URLS = [
             'https://github.com/inyeongjang/corner4'
         ]
+        self.save_dir = os.environ.get("RESULT_SAVE_DIR", os.path.abspath("result"))
 
     def run_autofic(self, repo_url):
-        """
-        Runs the Autofic CLI tool on the given repository URL.
-        The command is executed via subprocess and output is captured.
-        If the command fails (non-zero exit code), the function returns immediately.
-        """
         print(f"\n[RUN] {repo_url}")
         cmd = [
             'python', '-m', 'autofic_core.cli',
             '--repo', repo_url,
-            '--save-dir', 'downloaded_folder',
-            '--sast',
-            '--rule', 'p/javascript'
+            '--save-dir', self.save_dir,
+            '--sast', 'semgrep',
+            '--llm', '--patch',
+            '--pr'
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            return
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            print(result.stdout)
+            print(result.stderr)
+        except subprocess.CalledProcessError as e:
+            print("=== CalledProcessError ===")
+            print("stdout:", e.stdout)
+            print("stderr:", e.stderr)
+            raise
 
     def main(self):
         """
