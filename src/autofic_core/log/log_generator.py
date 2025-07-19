@@ -1,4 +1,5 @@
 import datetime
+import os
 import json
 import re
 import hashlib
@@ -7,19 +8,23 @@ from collections import Counter, defaultdict
 from autofic_core.sast.semgrep.preprocessor import SemgrepPreprocessor
 from autofic_core.sast.codeql.preprocessor import CodeQLPreprocessor
 from autofic_core.sast.snykcode.preprocessor import SnykCodePreprocessor
+from autofic_core.sast.snippet import BaseSnippet
 
 class LogGenerator:
     def __init__(self, default_options=None):
         self.default_options = default_options or {}
 
-    def generate_pr_log(self, user_name, repo_url, repo_hash, approved=False):
+    def generate_pr_log(self, owner, repo, user_name, repo_url, repo_hash, pr_number):
         today = datetime.datetime.now().isoformat()
         return {
             "date": today,
+            "owner": owner,
+            "repo": repo,
             "user_name":user_name,
-            "repo": repo_url,
+            "repo_url": repo_url,
             "repo_hash": repo_hash,
-            "approved": approved
+            "pr_number": pr_number,
+            "approved": False
         }
 
     def generate_repo_log(self, save_dir, name, owner, repo_url, sastTool, rerun=False):
@@ -44,64 +49,93 @@ class LogGenerator:
         vulnerabilities = sum(byClass_counter.values())
 
         analysis_lines = []
-        analysis_lines.append("## 🔏 Security Patch Summary\n")
+        analysis_lines.append("🔧 Security Patch Summary\n")
+        analysis_lines.append(f"- SAST Tool: {sastTool.capitalize()}")
+        analysis_lines.append(f"- Total vulnerabilities Detected: {vulnerabilities}\n")
+
+        if vulnerabilities > 0:
+            analysis_lines.append("| Type | Count |")
+            analysis_lines.append("|------|-------|")
+            for entry in byClass:
+                analysis_lines.append(f"| {entry['type']} | {entry['count']} |")
 
         # SAST Summary
-        if vulnerabilities > 0:
-            analysis_lines.append(f"### SAST Analysis Summary")
-            analysis_lines.append(f"- Total Vulnerabilities: {vulnerabilities}")
-            for entry in byClass:
-                analysis_lines.append(f"- {entry['type']}: {entry['count']}")
+        analysis_lines.append("📁 File-by-File Summary\n")
 
-            grouped_by_file = defaultdict(list)
-            for item in snippets:
-                filename = Path(item.path or "Unknown").name
-                grouped_by_file[filename].append(item)
+        grouped_by_file = defaultdict(list)
+        repo_dir = Path(save_dir) / "repo"
 
-            file_idx = 1
-            for filename, items in grouped_by_file.items():
-                analysis_lines.append(f"\n### 🗂️ {file_idx}. `{filename}`")
-                analysis_lines.append(f"#### 🔎 SAST Analysis Details")
-                for vuln_idx, item in enumerate(items, 1):
-                    vuln = item.vulnerability_class[0] if item.vulnerability_class else "N/A"
-                    analysis_lines.append(f"> #### {file_idx}-{vuln_idx}. [Vulnerability] {vuln}")
-                    analysis_lines.append(f"> - 🛡️ Severity: {item.severity}")
-                    if item.message:
-                        analysis_lines.append(f"> - ✍️ Message: {item.message.strip()}")
-                    if item.cwe:
-                        analysis_lines.append(f"> - 🔖 CWE: {', '.join(item.cwe)}")
-                    if item.references:
-                        for ref in item.references:
-                            analysis_lines.append(f"> - 🔗 Reference: {ref}")
-                file_idx += 1
-        else:
-            analysis_lines.append("⚠️ No SAST results available.")
+        for item in snippets:
+            filename = os.path.relpath(item.path, repo_dir).replace("\\", "/")
+            grouped_by_file[filename].append(item)
 
-        # LLM Summary
-        llm_dir = Path(save_dir) / 'llm'
-        analysis_lines.append("\n### 🤖 LLM Analysis Summary")
-        for llm_file in llm_dir.glob('*.md'):
-            with open(llm_file, encoding='utf-8') as f:
-                content = f.read().strip()
-            if not content:
-                continue
+        file_idx = 1
+        for filename, items in grouped_by_file.items():
+            analysis_lines.append(f"\n### {file_idx}. `{filename}`")
+            analysis_lines.append("🔏 SAST Analysis Summary")
 
-            analysis_lines.append(f"\n#### {llm_file.name}")
+            has_cwe = any(item.cwe for item in items)
+            has_ref = any(item.references for item in items)
 
-            parsed = self.parse_llm_response(content)
-            if parsed["Vulnerability"] or parsed["Risks"] or parsed["Recommended Fix"] or parsed["References"]:
+            header = ["Line", "Type", "Level"]
+            if has_cwe:
+                header.append("CWE")
+            if has_ref:
+                header.append("Ref")
+
+            analysis_lines.append("| " + " | ".join(header) + " |")
+            analysis_lines.append("|" + "|".join(["-" * len(h) for h in header]) + "|")
+
+            for item in items:
+                line = str(item.start_line) if item.start_line == item.end_line else f"{item.start_line}~{item.end_line}"
+                vuln = item.vulnerability_class[0] if item.vulnerability_class else "N/A"
+                level = item.severity.upper() if item.severity else "N/A"
+                emoji = {
+                    "ERROR": "🛑 ERROR",
+                    "WARNING": "⚠️ WARNING",
+                    "NOTE": "💡 NOTE"
+                }.get(level, level)
+
+                row = [line, vuln, emoji]
+
+                if has_cwe:
+                    cwe = item.cwe[0].split(":")[0] if item.cwe else "N/A"
+                    row.append(cwe)
+                if has_ref:
+                    ref = item.references[0] if item.references else ""
+                    ref = f"[🔗]({ref})" if ref else ""
+                    row.append(ref)
+
+                analysis_lines.append("| " + " | ".join(row) + " |")
+
+            # LLM Summary
+            llm_dir = Path(save_dir) / 'llm'
+            analysis_lines.append("\n 🤖 LLM Analysis Summary")
+
+            base_filename = filename.replace("/", "_")
+            llm_file = llm_dir / f"response_{base_filename}.md"
+            if llm_file.exists():
+                with open(llm_file, encoding="utf-8") as f:
+                    content = f.read().strip()
+                if not content:
+                    continue
+
+                file_name = llm_file.name.replace("response_", "").replace(".md", "").replace("_", "/")
+                analysis_lines.append(f"\n### 📄 `{file_name}`")
+
+                parsed = self.parse_llm_response(content)
                 if parsed["Vulnerability"]:
-                    analysis_lines.append(f"> #### 🐞 Vulnerability Description")
-                    analysis_lines.append(f"> {parsed['Vulnerability']}")
-                if parsed["Risks"]:
-                    analysis_lines.append(f"> #### ⚠️ Potential Risks")
-                    analysis_lines.append(f"> {parsed['Risks']}")
+                    analysis_lines.append("#### 🔸 Vulnerability Description")
+                    analysis_lines.append(parsed["Vulnerability"])
                 if parsed["Recommended Fix"]:
-                    analysis_lines.append(f"> #### 🛠 Recommended Fix")
-                    analysis_lines.append(f"> {parsed['Recommended Fix']}")
+                    analysis_lines.append("#### 🔸 Recommended Fix")
+                    analysis_lines.append(parsed["Recommended Fix"])
                 if parsed["References"]:
-                    analysis_lines.append(f"> #### 📎 References")
-                    analysis_lines.append(f"> {parsed['References']}")
+                    analysis_lines.append("#### 🔸 Additional Notes")
+                    analysis_lines.append(parsed["References"])
+                
+            file_idx += 1
+
         analysis_text = "\n".join(analysis_lines)
 
         repo_dict = {
@@ -112,8 +146,7 @@ class LogGenerator:
             "byClass": byClass,
             "analysis": analysis_text,
             "sastTool": sastTool,
-            "rerun": rerun,
-            "update" : datetime.datetime.now().isoformat()
+            "rerun": rerun
         }
         repo_dict["repo_hash"] = self.get_repo_hash(repo_dict)
         return repo_dict
@@ -124,7 +157,6 @@ class LogGenerator:
         hash_input = json.dumps(filtered, sort_keys=True)
         return hashlib.sha256(hash_input.encode()).hexdigest()
 
-
     def parse_llm_response(self, content: str) -> dict:
         sections = {
             "Vulnerability": "",
@@ -134,11 +166,11 @@ class LogGenerator:
         }
 
         pattern = re.compile(
-            r"1\. Vulnerability Description\s*[:：]?(.*?)"
-            r"2\. Potential Risk\s*[:：]?(.*?)"
-            r"3\. Suggested Fix\s*[:：]?(.*?)"
-            r"(?:4\. Final Patched Code.*?)?"
-            r"5\. Reference\s*[:：]?(.*)",
+            r"1\. Vulnerability Description\s*[:：]?\s*(.*?)\s*"
+            r"2\. Potential Risk\s*[:：]?\s*(.*?)\s*"
+            r"3\. Recommended Fix\s*[:：]?\s*(.*?)\s*"
+            r"(?:4\. Final Modified Code.*?\s*)?"
+            r"5\. Additional Notes\s*[:：]?\s*(.*)",
             re.DOTALL
         )
 
