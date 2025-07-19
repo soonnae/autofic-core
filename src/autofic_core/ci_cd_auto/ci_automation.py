@@ -19,6 +19,7 @@
 """
 
 import subprocess
+import os
 
 class Ci_Automate:
     """
