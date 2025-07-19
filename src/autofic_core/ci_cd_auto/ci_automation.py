@@ -40,8 +40,9 @@ class Ci_Automate:
             'python', '-m', 'autofic_core.cli',
             '--repo', repo_url,
             '--save-dir', self.save_dir,
-            '--sast',
-            '--rule', 'p/javascript'
+            '--sast', 'semgrep',
+            '--llm', '--patch',
+            '--pr'
         ]
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
