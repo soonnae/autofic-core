@@ -31,6 +31,7 @@ class Ci_Automate:
         self.REPO_URLS = [
             'https://github.com/inyeongjang/corner4'
         ]
+        self.save_dir = os.environ.get("RESULT_SAVE_DIR", os.path.abspath("result"))
 
     def run_autofic(self, repo_url):
         """
@@ -42,9 +43,10 @@ class Ci_Automate:
         cmd = [
             'python', '-m', 'autofic_core.cli',
             '--repo', repo_url,
-            '--save-dir', 'downloaded_folder',
-            '--sast',
-            '--rule', 'p/javascript'
+            '--save-dir', self.save_dir,
+            '--sast', 'semgrep',
+            '--llm', '--patch',
+            '--pr'
         ]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
