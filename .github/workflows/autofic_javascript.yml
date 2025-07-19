@@ -38,7 +38,8 @@ jobs:
           USER_NAME: ${{ secrets.USER_NAME }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          RESULT_SAVE_DIR: ${{ github.workspace }}/result
+          RESULT_SAVE_DIR: ${{ github.workspace }}/result,
+          LOG_API_URL: ${{secrets.LOG_API_URL}}
         run: |
           python src/autofic_core/ci_cd_auto/ci_automation.py
 
