@@ -181,8 +181,9 @@ class PRProcedure:
         }
         pr_resp = requests.post(pr_url, json=data_post, headers=headers)
         if pr_resp.status_code in (201, 202):
+            pr_json = pr_resp.json()
             time.sleep(0.05)
-            return True
+            return pr_json["number"] 
         else:
             return False
     
@@ -261,7 +262,7 @@ class PRProcedure:
         }
         pr_resp = requests.post(pr_url, json=data_post, headers=headers)
         if pr_resp.status_code in (201, 202):
-            pr_json = pr_resp.json()            
+            pr_json = pr_resp.json()           
         else:
             return
 

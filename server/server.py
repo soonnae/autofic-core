@@ -87,5 +87,28 @@ def add_repo_status():
     added_repo = flask_manager.add_repo_status(new_repo)
     return jsonify({"status": "added", "repo": added_repo})
 
+@app.route('/update_approval', methods=['POST'])
+def update_approval():
+    data = request.get_json()
+    pr_number = data.get("pr_number")
+    approved = data.get("approved", True)
+
+    if pr_number is None:
+        return jsonify({"error": "pr_number is required"}), 400
+
+    log_data = flask_manager.load_log()
+    updated = False
+
+    for pr in log_data.get("prs", []):
+        if pr.get("pr_number") == pr_number:
+            pr["approved"] = approved
+            updated = True
+
+    if updated:
+        flask_manager.save_log(log_data)
+        return jsonify({"status": "updated", "pr_number": pr_number})
+    else:
+        return jsonify({"error": "PR not found"}), 404
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
