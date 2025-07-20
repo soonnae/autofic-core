@@ -61,16 +61,40 @@ class LLMExecutionError(Exception):
         self.message = message
         super().__init__(f"LLM execution error: {message}")
 
-# diff_generator.py
-
-class DiffGenerationError(AutoficError):
-    def __init__(self, filename: str, reason: str):
-        message = f"[Diff Generation Failed] File: {filename} - Reason: {reason}"
-        super().__init__(message)
-        self.filename = filename
-        self.reason = reason
 
 class CodeQLExecutionError(Exception):
     """Raised when CodeQL execution fails."""
     def __init__(self):
         super().__init__("[ERROR] CodeQL execution failed. Please check the log file for details.")
+        
+
+# diff_generator.py
+
+class DiffWarningMessages:
+    ORIGINAL_FILE_NOT_FOUND = "[ WARN ] Original file not found: {}"
+
+class DiffGenerationError(AutoficError):
+    def __init__(self, filename: str, reason: str):
+        message = f"[ ERROR ] Failed to generate diff: {filename} - {reason}"
+        super().__init__(message)
+        self.filename = filename
+        self.reason = reason
+        
+
+# apply_patch.py
+
+class PatchWarningMessages:
+    NO_DIFF_FILES = "[ WARN ] No .diff files found in {}"
+    PARSED_FILE_NOT_FOUND = "[ WARN ] Could not find matching file in parsed directory: {}"
+    RELATIVE_PATH_EXTRACTION_FAILED = "[ WARN ] Failed to extract relative path: {}"
+    ORIGINAL_FILE_MISSING = "[ WARN ] Original file does not exist: {}"
+    OVERWRITE_FILE_MISSING = "[ WARN ] Original file does not exist in repo: {}"
+
+class PatchErrorMessages:
+    PATCH_EXCEPTION = "[ ERROR ] Exception while applying {}: {}"
+    FALLBACK_DIFF_FAILED = "[ ERROR ] Failed to generate fallback diff: {}"
+    OVERWRITE_FAILED = "[ ERROR ] Failed to overwrite repo file: {}"
+
+class PatchFailMessages:
+    PATCH_FAILED = "[ FAIL ] Patch failed: {}"
+    FALLBACK_APPLY_FAILED = "[ FAIL ] Fallback diff failed: {}"
