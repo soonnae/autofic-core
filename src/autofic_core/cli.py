@@ -3,6 +3,7 @@ import json
 import time
 import os
 import sys
+from autofic_core.errors import *
 from pathlib import Path
 from rich.console import Console
 from pyfiglet import Figlet
@@ -82,19 +83,37 @@ class RepositoryManager:
         self.repo_url = repo_url
         self.save_dir = save_dir
         self.clone_path = None
-        self.handler = GitHubRepoHandler(repo_url=self.repo_url)
+        try:
+            self.handler = GitHubRepoHandler(repo_url=self.repo_url)
+        except GitHubTokenMissingError as e:
+            console.print(f"[ ERROR ] GitHub token is missing: {e}", style="red")
+            raise
+        except RepoURLFormatError as e:
+            console.print(f"[ ERROR ] Invalid repository URL: {e}", style="red")
+            raise
 
     def clone(self):
         print_divider("Repository Cloning Stage")
 
-        if self.handler.needs_fork:
-            console.print("\nAttempting to fork the repository...\n", style="cyan")
-            self.handler.fork()
-            time.sleep(1)
-            console.print("\n[ SUCCESS ] Fork completed\n", style="green")
+        try:
+            if self.handler.needs_fork:
+                console.print("\nAttempting to fork the repository...\n", style="cyan")
+                self.handler.fork()
+                time.sleep(1)
+                console.print("\n[ SUCCESS ] Fork completed\n", style="green")
+        except ForkFailedError as e:
+            console.print(f"[ ERROR ] Failed to fork repository: {e}", style="red")
+            raise
 
-        self.clone_path = Path(self.handler.clone_repo(save_dir=str(self.save_dir), use_forked=self.handler.needs_fork))
-        console.print(f"\n[ SUCCESS ] Repository cloned successfully: {self.clone_path}\n", style="green")
+        try:
+            self.clone_path = Path(self.handler.clone_repo(save_dir=str(self.save_dir), use_forked=self.handler.needs_fork))
+            console.print(f"\n[ SUCCESS ] Repository cloned successfully: {self.clone_path}\n", style="green")
+        except RepoAccessError as e:
+            console.print(f"[ ERROR ] Cannot access repository: {e}", style="red")
+            raise
+        except Exception as e:
+            console.print(f"[ ERROR ] Unexpected error during cloning: {e}", style="red")
+            raise
 
 
 class SASTAnalyzer:
