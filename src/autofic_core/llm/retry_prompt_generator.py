@@ -15,19 +15,30 @@
 # =============================================================================
 
 from typing import List
-from pydantic import BaseModel
 from pathlib import Path
+from pydantic import BaseModel
+from autofic_core.errors import RetryPromptGenerationError
+
 
 class RetryPromptTemplate(BaseModel):
+    """Template structure for retry prompts."""
     title: str
     content: str
 
+
 class GeneratedRetryPrompt(BaseModel):
+    """Result of applying template to a parsed file."""
     title: str
     prompt: str
-    path: str 
+    path: str
+
 
 class RetryPromptGenerator:
+    """
+    Generates retry prompts from already-patched (parsed) files.
+    These prompts are used for re-validating the code via LLM.
+    """
+
     def __init__(self, parsed_dir: Path):
         self.parsed_dir = parsed_dir
         self.template = RetryPromptTemplate(
@@ -57,27 +68,30 @@ class RetryPromptGenerator:
         )
 
     def generate_prompt(self, file_path: Path) -> GeneratedRetryPrompt:
+        """Generate a single prompt from a file."""
         try:
             code = file_path.read_text(encoding="utf-8")
         except Exception as e:
-            raise RuntimeError(f"[ERROR] Failed to read {file_path}: {e}")
+            raise RetryPromptGenerationError(str(file_path), str(e))
 
-        rendered_prompt = self.template.content.format(input=code)
+        rendered = self.template.content.format(input=code)
         return GeneratedRetryPrompt(
             title=self.template.title,
-            prompt=rendered_prompt,
-            path=str(file_path.relative_to(self.parsed_dir))
+            prompt=rendered,
+            path=str(file_path.relative_to(self.parsed_dir)),
         )
 
     def generate_prompts(self) -> List[GeneratedRetryPrompt]:
-        parsed_files = sorted(self.parsed_dir.glob("*.parsed")) 
-        return [self.generate_prompt(file) for file in parsed_files]
-    
+        """Generate prompts from all .parsed files in parsed_dir."""
+        parsed_files = sorted(self.parsed_dir.glob("*.parsed"))
+        return [self.generate_prompt(f) for f in parsed_files]
+
     def get_unique_file_paths(self, prompts: List[GeneratedRetryPrompt]) -> List[str]:
+        """Return deduplicated, sorted list of relative paths from prompts."""
         seen = set()
-        unique = []
-        for prompt in prompts:
-            if prompt.path not in seen:
-                unique.append(prompt.path)
-                seen.add(prompt.path)
-        return sorted(unique)
+        result = []
+        for p in prompts:
+            if p.path not in seen:
+                seen.add(p.path)
+                result.append(p.path)
+        return sorted(result)

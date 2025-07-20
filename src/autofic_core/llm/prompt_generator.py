@@ -29,6 +29,7 @@ class PromptTemplate(BaseModel):
     content: str
 
     def render(self, file_snippet: BaseSnippet) -> str:
+        """Render a prompt based on the provided code snippet."""
         if not file_snippet.input.strip():
             raise PromptGenerationException(
                 PromptGeneratorErrorCodes.EMPTY_SNIPPET,
@@ -43,15 +44,12 @@ class PromptTemplate(BaseModel):
             f"Location: {file_snippet.start_line} ~ {file_snippet.end_line} (Only modify this code range)\n\n"
         )
 
-        escaped_input = file_snippet.input
-
         try:
             return self.content.format(
-                input=escaped_input,
+                input=file_snippet.input,
                 vulnerabilities=vulnerabilities_str,
             )
-        except Exception as e:
-            print(f"[DEBUG] PromptTemplate.render() exception: {e}")
+        except Exception:
             raise PromptGenerationException(
                 PromptGeneratorErrorCodes.TEMPLATE_RENDER_ERROR,
                 PromptGeneratorErrorMessages.TEMPLATE_RENDER_ERROR,
@@ -95,8 +93,9 @@ class PromptGenerator:
         )
 
     def generate_prompt(self, file_snippet: BaseSnippet) -> GeneratedPrompt:
+        """Generate a single prompt from one code snippet."""
         if not isinstance(file_snippet, BaseSnippet):
-            raise TypeError(f"[ERROR] generate_prompt: Invalid input type: {type(file_snippet)}")
+            raise TypeError(f"[ ERROR ] generate_prompt: Invalid input type: {type(file_snippet)}")
         rendered_prompt = self.template.render(file_snippet)
         return GeneratedPrompt(
             title=self.template.title,
@@ -105,6 +104,7 @@ class PromptGenerator:
         )
 
     def generate_prompts(self, file_snippets: List[BaseSnippet]) -> List[GeneratedPrompt]:
+        """Generate prompts from multiple snippets."""
         prompts = []
         for idx, snippet in enumerate(file_snippets):
             if isinstance(snippet, dict):
@@ -115,6 +115,7 @@ class PromptGenerator:
         return prompts
 
     def get_unique_file_paths(self, file_snippets: List[BaseSnippet]) -> List[str]:
+        """Extract unique paths from list of snippets."""
         paths = set()
         for idx, snippet in enumerate(file_snippets):
             if isinstance(snippet, dict):
