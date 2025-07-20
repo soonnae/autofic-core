@@ -321,15 +321,19 @@ class LLMProcessor:
         llm = LLMRunner() 
         retry_output_dir = self.save_dir / "retry_llm"
         retry_output_dir.mkdir(parents=True, exist_ok=True)
-
+        
         console.print("\nStarting GPT retry response generation\n")
         with create_progress() as progress:
             task = progress.add_task("[magenta]Retrying LLM responses...", total=len(retry_prompts))
             for prompt in retry_prompts:
-                response = llm.run(prompt.prompt)
-                save_md_response(response, prompt, output_dir=retry_output_dir)
-                progress.update(task, advance=1)
-                time.sleep(0.01)
+                try:
+                    response = llm.run(prompt.prompt)
+                    save_md_response(response, prompt, output_dir=retry_output_dir)
+                except LLMExecutionError as e:
+                    console.print(str(e), style="red")
+                finally:
+                    progress.update(task, advance=1)
+                    time.sleep(0.01)
             progress.update(task, completed=100)
 
         console.print(f"\n[ SUCCESS ] Retry LLM responses saved → {retry_output_dir}\n", style="green")
@@ -339,12 +343,16 @@ class LLMProcessor:
     def extract_and_save_parsed_code(self):
         print_divider("LLM Response Parsing Stage")
         parser = ResponseParser(md_dir=self.llm_output_dir, diff_dir=self.parsed_dir)
-        success = parser.extract_and_save_all()
-
+        
+        try:
+            success = parser.extract_and_save_all()
+        except ResponseParseError as e:
+            console.print(str(e), style="red")
+            success = False
+            
         if success:
             console.print(f"\n[ SUCCESS ] Parsed code saved → {self.parsed_dir}\n", style="green")
-        else:
-            console.print(f"\n[ WARN ] No parsable content found in LLM responses.\n", style="yellow")
+        else:console.print(f"\n[ WARN ] No parsable content found in LLM responses.\n", style="yellow")
 
 class PatchManager:
     def __init__(self, parsed_dir: Path, patch_dir: Path, repo_dir: Path):
@@ -418,9 +426,14 @@ class AutoFiCPipeline:
 
             with open(merged_path, "r", encoding="utf-8") as f:
                 merged_data = json.load(f)
-
+                
             self.llm_processor = LLMProcessor(sast_result_path, self.repo_manager.clone_path, self.save_dir, self.sast_tool)
-            prompts, file_snippets = self.llm_processor.run()
+            
+            try:
+                prompts, file_snippets = self.llm_processor.run()
+            except LLMExecutionError as e:
+                console.print(str(e), style="red")
+                sys.exit(1)
             
             if not prompts:
                 console.print("[INFO] No valid prompts returned from LLM processor. Exiting pipeline early.\n", style="cyan")

@@ -53,20 +53,38 @@ class PromptGeneratorErrorMessages:
 
 class PromptGenerationException(AutoficError):
     def __init__(self, code: str, message: str):
-        super().__init__(message)
         self.code = code
+        super().__init__(f"[ ERROR ] Prompt generation failed ({code}): {message}")
 
-class LLMExecutionError(Exception):
+# response_parser.py
+
+class ResponseParseError(AutoficError):
+    def __init__(self, filename: str, reason: str):
+        message = f"[ ERROR ] Failed to parse {filename}: {reason}"
+        super().__init__(message)
+        self.filename = filename
+        self.reason = reason
+
+# llm_runner.py
+
+class LLMExecutionError(AutoficError):
     def __init__(self, message: str):
+        super().__init__(f"[ ERROR ] LLM execution failed: {message}")
         self.message = message
-        super().__init__(f"LLM execution error: {message}")
-
 
 class CodeQLExecutionError(Exception):
     """Raised when CodeQL execution fails."""
     def __init__(self):
         super().__init__("[ERROR] CodeQL execution failed. Please check the log file for details.")
         
+# retry_prompt_generator.py   
+
+class RetryPromptGenerationError(AutoficError):
+    def __init__(self, path: str, reason: str):
+        message = f"[ ERROR ] Failed to generate retry prompt for {path}: {reason}"
+        super().__init__(message)
+        self.path = path
+        self.reason = reason
 
 # diff_generator.py
 
