@@ -111,10 +111,123 @@ class RepositoryManager:
         except RepoAccessError as e:
             console.print(f"[ ERROR ] Cannot access repository: {e}", style="red")
             raise
+        except (PermissionError, OSError) as e:
+            console.print(f"[ ERROR ] Access denied while cloning repository: {e}", style="red")
+            console.print("💡 Close any editors or terminals using the directory and try again.", style="yellow")
+            raise
         except Exception as e:
             console.print(f"[ ERROR ] Unexpected error during cloning: {e}", style="red")
             raise
 
+class SemgrepHandler:
+    def __init__(self, repo_path: Path, save_dir: Path):
+        self.repo_path = repo_path
+        self.save_dir = save_dir
+
+    def run(self):
+        console.print("\n[Tool: Semgrep].\n", style="cyan")
+        with create_progress() as progress:
+            task = progress.add_task("[cyan]Running Semgrep...", total=100)
+            for _ in range(100):
+                progress.update(task, advance=1)
+                time.sleep(0.01)
+            runner = SemgrepRunner(repo_path=str(self.repo_path), rule="p/javascript")
+            result = runner.run_semgrep()
+            progress.update(task, completed=100)
+
+        if result.returncode != 0:
+            raise RuntimeError("Semgrep execution failed")
+
+        return self._post_process(json.loads(result.stdout))
+
+    def _post_process(self, data):
+        sast_dir = self.save_dir / "sast"
+        sast_dir.mkdir(parents=True, exist_ok=True)
+        before_path = sast_dir / "before.json"
+        SemgrepPreprocessor.save_json_file(data, before_path)
+        snippets = SemgrepPreprocessor.preprocess(str(before_path), str(self.repo_path))
+        merged = merge_snippets_by_file(snippets)
+        merged_path = sast_dir / "merged_snippets.json"
+        with open(merged_path, "w", encoding="utf-8") as f:
+            json.dump([s.model_dump() for s in merged], f, indent=2, ensure_ascii=False)
+
+        if not merged:
+            console.print("[INFO] No vulnerabilities found.\n", style="cyan")
+            return None
+
+        return merged_path
+
+class CodeQLHandler:
+    def __init__(self, repo_path: Path, save_dir: Path):
+        self.repo_path = repo_path
+        self.save_dir = save_dir
+
+    def run(self):
+        console.print("\n[Tool: CodeQL]\n", style="cyan")
+        with create_progress() as progress:
+            task = progress.add_task("[cyan]Running CodeQL...", total=100)
+            for _ in range(100):
+                progress.update(task, advance=1)
+                time.sleep(0.01)
+            runner = CodeQLRunner(repo_path=str(self.repo_path))
+            result_path = runner.run_codeql()
+            progress.update(task, completed=100)
+
+        with open(result_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return self._post_process(data)
+
+    def _post_process(self, data):
+        sast_dir = self.save_dir / "sast"
+        sast_dir.mkdir(parents=True, exist_ok=True)
+        before_path = sast_dir / "before.json"
+        CodeQLPreprocessor.save_json_file(data, before_path)
+        snippets = CodeQLPreprocessor.preprocess(str(before_path), str(self.repo_path))
+        merged = merge_snippets_by_file(snippets)
+        merged_path = sast_dir / "merged_snippets.json"
+        with open(merged_path, "w", encoding="utf-8") as f:
+            json.dump([s.model_dump() for s in merged], f, indent=2, ensure_ascii=False)
+
+        if not merged:
+            console.print("[INFO] No vulnerabilities found.\n", style="cyan")
+            return None
+
+        return merged_path
+
+class SnykCodeHandler:
+    def __init__(self, repo_path: Path, save_dir: Path):
+        self.repo_path = repo_path
+        self.save_dir = save_dir
+
+    def run(self):
+        console.print("\n[Tool: SnykCode]\n", style="cyan")
+        with create_progress() as progress:
+            task = progress.add_task("[cyan]Running SnykCode...", total=100)
+            for _ in range(100):
+                progress.update(task, advance=1)
+                time.sleep(0.01)
+            runner = SnykCodeRunner(repo_path=str(self.repo_path))
+            result = runner.run_snykcode()
+            progress.update(task, completed=100)
+
+        return self._post_process(json.loads(result.stdout))
+
+    def _post_process(self, data):
+        sast_dir = self.save_dir / "sast"
+        sast_dir.mkdir(parents=True, exist_ok=True)
+        before_path = sast_dir / "before.json"
+        SnykCodePreprocessor.save_json_file(data, before_path)
+        snippets = SnykCodePreprocessor.preprocess(str(before_path), str(self.repo_path))
+        merged = merge_snippets_by_file(snippets)
+        merged_path = sast_dir / "merged_snippets.json"
+        with open(merged_path, "w", encoding="utf-8") as f:
+            json.dump([s.model_dump() for s in merged], f, indent=2, ensure_ascii=False)
+
+        if not merged:
+            console.print("[INFO] No vulnerabilities found.\n", style="cyan")
+            return None
+
+        return merged_path
 
 class SASTAnalyzer:
     def __init__(self, repo_path: Path, save_dir: Path, tool: str):
@@ -122,128 +235,27 @@ class SASTAnalyzer:
         self.save_dir = save_dir
         self.tool = tool 
         self.result_path = None
+        self.handler = self._get_handler()
+
+    def _get_handler(self):
+        if self.tool == "semgrep":
+            return SemgrepHandler(self.repo_path, self.save_dir)
+        elif self.tool == "codeql":
+            return CodeQLHandler(self.repo_path, self.save_dir)
+        elif self.tool == "snykcode":
+            return SnykCodeHandler(self.repo_path, self.save_dir)
+        else:
+            raise ValueError(f"[ ERROR ] Unsupported SAST tool: {self.tool}")
 
     def run(self):
         print_divider("SAST Analysis Stage")
 
-        if self.tool == "semgrep":
-            console.print("\nStarting Semgrep analysis\n")
-            with create_progress() as progress:
-                task = progress.add_task("[cyan]Running Semgrep...", total=100)
-                for _ in range(100):
-                    progress.update(task, advance=1)
-                    time.sleep(0.01)
-
-                semgrep_runner = SemgrepRunner(repo_path=str(self.repo_path), rule="p/javascript")
-                semgrep_result_obj = semgrep_runner.run_semgrep()
-                progress.update(task, completed=100)
-
-            if semgrep_result_obj.returncode != 0:
-                console.print(f"\n[ ERROR ] Semgrep failed (return code: {semgrep_result_obj.returncode})\n", style="red")
-                raise RuntimeError("Semgrep execution failed")
-
-            sast_dir = self.save_dir / "sast"
-            sast_dir.mkdir(parents=True, exist_ok=True)
-            self.result_path = sast_dir / "before.json"
-
-            SemgrepPreprocessor.save_json_file(
-                json.loads(semgrep_result_obj.stdout),
-                self.result_path
-            )
-
-            console.print(f"\n[ SUCCESS ] Semgrep results saved →  {self.result_path}\n", style="green")
-
-            snippets = SemgrepPreprocessor.preprocess(
-                input_json_path=str(self.result_path),
-                base_dir=str(self.repo_path)
-            )
-            merged_snippets = merge_snippets_by_file(snippets)
-
-            merged_path = sast_dir / "merged_snippets.json"
-            with open(merged_path, "w", encoding="utf-8") as f:
-                json.dump([snippet.model_dump() for snippet in merged_snippets], f, indent=2, ensure_ascii=False)
-
-            console.print(f"[ SUCCESS ] Merged snippets saved → {merged_path}\n", style="green")
-            
-            if not merged_snippets:
-                console.print("[INFO] No vulnerabilities found during SAST. Exiting early.\n", style="cyan")
-                return None
-            
+        try:
+            merged_path = self.handler.run()
             return merged_path
-
-        elif self.tool == "codeql":
-            console.print("\nStarting CodeQL analysis\n")
-            with create_progress() as progress:
-                task = progress.add_task("[cyan]Running CodeQL...", total=100)
-                for _ in range(100):
-                    progress.update(task, advance=1)
-                    time.sleep(0.01)
-
-                codeql_runner = CodeQLRunner(repo_path=str(self.repo_path))
-                codeql_result_path = codeql_runner.run_codeql()
-                progress.update(task, completed=100)
-
-            sast_dir = self.save_dir / "sast"
-            sast_dir.mkdir(parents=True, exist_ok=True)
-            self.result_path = sast_dir / "before.json"
-
-            with open(codeql_result_path, "r", encoding="utf-8") as f:
-                sarif_data = json.load(f)
-
-            CodeQLPreprocessor.save_json_file(sarif_data, self.result_path)
-
-            console.print(f"\n[ SUCCESS ] CodeQL results saved →  {self.result_path}\n", style="green")
-
-            snippets = CodeQLPreprocessor.preprocess(
-                input_json_path=str(self.result_path),
-                base_dir=str(self.repo_path)
-            )
-            merged_snippets = merge_snippets_by_file(snippets)
-
-            merged_path = sast_dir / "merged_snippets.json"
-            with open(merged_path, "w", encoding="utf-8") as f:
-                json.dump([snippet.model_dump() for snippet in merged_snippets], f, indent=2, ensure_ascii=False)
-
-            console.print(f"[ SUCCESS ] Merged snippets saved → {merged_path}\n", style="green")
-
-            return merged_path
-
-        if self.tool == "snykcode":
-            console.print("\nStarting SnykCode analysis\n")
-            with create_progress() as progress:
-                task = progress.add_task("[cyan]Running SnykCode...", total=100)
-                for _ in range(100):
-                    progress.update(task, advance=1)
-                    time.sleep(0.01)
-
-                snykcode_runner = SnykCodeRunner(repo_path=str(self.repo_path))
-                snykcode_result_obj = snykcode_runner.run_snykcode()
-                progress.update(task, completed=100)
-
-            sast_dir = self.save_dir / "sast"
-            sast_dir.mkdir(parents=True, exist_ok=True)
-            self.result_path = sast_dir / "before.json"
-
-            SnykCodePreprocessor.save_json_file(
-                json.loads(snykcode_result_obj.stdout),
-                self.result_path
-            )
-
-            console.print(f"\n[ SUCCESS ] SnykCode results saved →  {self.result_path}\n", style="green")
-
-            snippets = SnykCodePreprocessor.preprocess(
-                input_json_path=str(self.result_path),
-                base_dir=str(self.repo_path)
-            )
-            merged_snippets = merge_snippets_by_file(snippets)
-
-            merged_path = sast_dir / "merged_snippets.json"
-            with open(merged_path, "w", encoding="utf-8") as f:
-                json.dump([snippet.model_dump() for snippet in merged_snippets], f, indent=2, ensure_ascii=False)
-
-            console.print(f"[ SUCCESS ] Merged snippets successfully saved → {merged_path}\n", style="green")
-
-            return merged_path
+        except Exception as e:
+            console.print(f"[ ERROR ] SAST tool [{self.tool}] failed: {e}", style="red")
+            raise
 
     def save_snippets(self, merged_snippets_path: Path):
         with open(merged_snippets_path, "r", encoding="utf-8") as f:
@@ -266,8 +278,6 @@ class SASTAnalyzer:
 
             with open(path, "w", encoding="utf-8") as f_out:
                 json.dump(snippet_obj.snippet, f_out, indent=2, ensure_ascii=False)
-
-        console.print(f"[ SUCCESS ] Snippets saved → {snippets_dir}\n", style="green")
 
 
 class LLMProcessor:
