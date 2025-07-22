@@ -1,3 +1,5 @@
+import time
+from urllib.parse import urlparse
 from rich.console import Console
 from pathlib import Path
 
@@ -8,18 +10,20 @@ def print_divider(title):
     console.print(f"\n\n[bold magenta]{'-'*20} [ {title} ] {'-'*20}[/bold magenta]\n\n")
 
 
+def extract_repo_name(repo_url: str) -> str:
+    parsed = urlparse(repo_url)
+    return parsed.path.strip("/").split("/")[-1]
+
 def print_summary(repo_url: str, detected_issues_count: int, output_dir: str, response_files: list):
     print_divider("AutoFiC Summary")
-    console.print(f"✔️ [bold]Target Repository:[/bold] {repo_url}")
-    console.print(f"✔️ [bold]Files with detected vulnerabilities:[/bold] {detected_issues_count} 개")
 
-    if response_files:
-        first_file = Path(response_files[0]).name
-        last_file = Path(response_files[-1]).name
-        console.print(f"✔️ [bold]Saved response files:[/bold] {first_file} ~ {last_file}")
-    else:
-        console.print(f"✔️ [bold]Saved response files:[/bold] None")
+    repo_name = extract_repo_name(repo_url)
+    console.print(f"✔️  [bold]Target Repository:[/bold] {repo_name}")
+    console.print(f"✔️  [bold]Files with detected vulnerabilities:[/bold] {detected_issues_count} 개")
+    console.print(f"✔️  [bold]LLM Responses:[/bold] Saved in the 'llm' folder")
+
     console.print(f"\n[bold magenta]{'━'*64}[/bold magenta]\n")
+    time.sleep(2.0)
 
 
 def print_help_message():
