@@ -39,6 +39,13 @@ class SemgrepExecutionError(AutoficError):
         message = f"Semgrep execution failed (return code:{returncode})"
         super().__init__(message)
 
+# snykcode_runner.py
+
+class SnykCodeErrorMessages:
+    TOKEN_MISSING = "[ ERROR ] SNYK_TOKEN environment variable not set."
+    NO_JS_FILES_FOUND = "[ ERROR ] No JavaScript/TypeScript files found to analyze."
+    CLI_NOT_FOUND = "[ ERROR ] Unable to locate Snyk CLI. Please install or set SNYK_CMD_PATH."
+
 # prompt_generator.py
 
 class PromptGeneratorErrorCodes:

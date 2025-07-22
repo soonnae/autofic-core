@@ -27,7 +27,10 @@ import os
 from pathlib import Path
 from typing import Optional
 from pydantic import BaseModel
+import tempfile
 from dotenv import load_dotenv
+from autofic_core.errors import SnykCodeErrorMessages
+
 
 load_dotenv()
 
@@ -62,7 +65,7 @@ class SnykCodeRunner:
         snyk_cmd, use_shell, prepend_node = self._resolve_snyk_command()
 
         if not self.snyk_token:
-            raise EnvironmentError("SNYK_TOKEN environment variable not set.")
+            raise EnvironmentError(SnykCodeErrorMessages.TOKEN_MISSING)
 
         self._ensure_config()
 
@@ -73,39 +76,62 @@ class SnykCodeRunner:
         # Simulate `snyk auth`
         self._ensure_authenticated(snyk_cmd, env)
 
-        # Build command
-        cmd = [snyk_cmd, "code", "test", "--json"]
-        if prepend_node:
-            cmd.insert(0, "node")
+        valid_exts = {".js", ".jsx", ".ts", ".mjs"}
+        target_files = [
+            p for p in self.repo_path.rglob("*")
+            if p.suffix in valid_exts and p.is_file()
+        ]
 
-        try:
-            result = subprocess.run(
-                cmd if not use_shell else " ".join(cmd),
-                cwd=self.repo_path,
-                env=env,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                check=False,
-                shell=use_shell
-            )
-
-            output_path = self.repo_path / "snyk_result.sarif.json"
-            output_path.write_text(result.stdout, encoding="utf-8")
-
+        if not target_files:
             return SnykCodeResult(
-                stdout=result.stdout,
-                stderr=result.stderr,
-                returncode=result.returncode,
-                result_path=str(output_path)
+                stdout="",
+                stderr=SnykCodeErrorMessages.NO_JS_FILES_FOUND,
+                returncode=1
             )
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
 
-        except subprocess.CalledProcessError as err:
-            return SnykCodeResult(
-                stdout=err.stdout or "",
-                stderr=err.stderr or "",
-                returncode=err.returncode
-            )
+            for src_file in target_files:
+                rel_path = src_file.relative_to(self.repo_path)
+                dst_file = temp_path / rel_path
+                dst_file.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src_file, dst_file)
+            
+            # Build command
+            cmd = [snyk_cmd, "code", "test", "--json"] 
+            if prepend_node:
+                cmd.insert(0, "node")
+
+            try:
+                result = subprocess.run(
+                    cmd if not use_shell else " ".join(cmd),
+                    cwd=temp_path,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace", 
+                    check=False,
+                    shell=use_shell
+                )
+
+                output_path = self.repo_path / "snyk_result.sarif.json"
+                output_path.write_text(result.stdout, encoding="utf-8")
+
+                return SnykCodeResult(
+                    stdout=result.stdout,
+                    stderr=result.stderr,
+                    returncode=result.returncode,
+                    result_path=str(output_path)
+                )
+
+            except subprocess.CalledProcessError as err:
+                return SnykCodeResult(
+                    stdout=err.stdout or "",
+                    stderr=err.stderr or "",
+                    returncode=err.returncode
+                )
 
     def _ensure_authenticated(self, snyk_cmd: str, env: dict) -> None:
         """
@@ -165,4 +191,4 @@ class SnykCodeRunner:
         except Exception:
             pass
 
-        raise FileNotFoundError("Unable to locate Snyk CLI. Please install or set SNYK_CMD_PATH.")
+        raise FileNotFoundError(SnykCodeErrorMessages.CLI_NOT_FOUND)
