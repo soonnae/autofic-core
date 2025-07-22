@@ -13,8 +13,8 @@ class RepoURLFormatError(AutoficError):
         super().__init__(f"Invalid GitHub repository URL format: {repo_url}")
 
 class RepoAccessError(AutoficError):
-    def __init__(self, message: str):
-        super().__init__(message)
+    def __init__(self):
+        super().__init__("Failed to access the repository.")
 
 class ForkFailedError(RepoAccessError):
     def __init__(self, status_code, message):
@@ -123,3 +123,31 @@ class PatchErrorMessages:
 class PatchFailMessages:
     PATCH_FAILED = "[ FAIL ] Patch failed: {}"
     FALLBACK_APPLY_FAILED = "[ FAIL ] Fallback diff failed: {}"
+
+# cli.py
+
+class PermissionDeniedError(AutoficError):
+    def __init__(self, original_exception: Exception):
+        message = (
+            f"{original_exception}\n"
+            "Please close any editors or terminals using the folder and try again."
+        )
+        super().__init__(message)
+
+class UnexpectedAutoficError(AutoficError):
+    def __init__(self, original_exception: Exception):
+        super().__init__("An unexpected error occurred: {original_exception}\n")
+
+class SASTExecutionError(AutoficError):
+    def __init__(self, tool: str, original_exception: Exception):
+        super().__init__("SAST tool [{tool}] failed to execute: {original_exception}\n")
+        self.tool = tool
+        self.original_exception = original_exception
+
+class UnknownSnippetTypeError(AutoficError):
+    def __init__(self, obj):
+        super().__init__("Unknown snippet type encountere.")
+
+class MergedSnippetsLoadError(AutoficError):
+    def __init__(self, original_exception: Exception):
+        super().__init__("Failed to load merged snippets from your path.\n")

@@ -9,6 +9,7 @@ from rich.console import Console
 from pyfiglet import Figlet
 from dotenv import load_dotenv
 
+from autofic_core.utils.ui_utils import print_divider, print_summary, print_help_message
 from autofic_core.utils.progress_utils import create_progress
 from autofic_core.download.github_repo_handler import GitHubRepoHandler
 from autofic_core.sast.snippet import BaseSnippet 
@@ -37,47 +38,6 @@ f = Figlet(font="slant")
 ascii_art = f.renderText("AutoFiC")
 console.print(f"\n\n\n[magenta]{ascii_art}[/magenta]")
 
-
-def print_divider(title):
-    console.print(f"\n\n[bold magenta]{'-'*20} [ {title} ] {'-'*20}[/bold magenta]\n\n")
-
-
-def print_summary(repo_url: str, detected_issues_count: int, output_dir: str, response_files: list):
-    print_divider("AutoFiC Summary")
-    console.print(f"✔️ [bold]Target Repository:[/bold] {repo_url}")
-    console.print(f"✔️ [bold]Files with detected vulnerabilities:[/bold] {detected_issues_count} 개")
-
-    if response_files:
-        first_file = Path(response_files[0]).name
-        last_file = Path(response_files[-1]).name
-        console.print(f"✔️ [bold]Saved response files:[/bold] {first_file} ~ {last_file}")
-    else:
-        console.print(f"✔️ [bold]Saved response files:[/bold] None")
-    console.print(f"\n[bold magenta]{'━'*64}[/bold magenta]\n")
-
-
-def print_help_message():
-    click.secho("\n\n [ AutoFiC CLI Usage Guide ]", fg="magenta", bold=True)
-    click.echo("""
-
---explain       Display AutoFiC usage guide
-
---repo          GitHub repository URL to analyze (required)
---save-dir      Directory to save analysis results (default: artifacts/downloaded_repo)
-
---sast          Run SAST analysis using selected tool (semgrep, codeql, snyk)
-
---llm           Run LLM to fix vulnerable code and save response
---llm-retry     Re-run LLM to verify and finalize code
-
-\n※ Example usage:
-    python -m autofic_core.cli --repo https://github.com/user/project --sast --llm
-
-⚠️ Note:
-  - The --sast option must be run before using --llm or --llm-retry
-    """)
-
-
 class RepositoryManager:
     def __init__(self, repo_url: str, save_dir: Path):
         self.repo_url = repo_url
@@ -86,10 +46,8 @@ class RepositoryManager:
         try:
             self.handler = GitHubRepoHandler(repo_url=self.repo_url)
         except GitHubTokenMissingError as e:
-            console.print(f"[ ERROR ] GitHub token is missing: {e}", style="red")
             raise
         except RepoURLFormatError as e:
-            console.print(f"[ ERROR ] Invalid repository URL: {e}", style="red")
             raise
 
     def clone(self):
@@ -102,22 +60,20 @@ class RepositoryManager:
                 time.sleep(1)
                 console.print("\n[ SUCCESS ] Fork completed\n", style="green")
         except ForkFailedError as e:
-            console.print(f"[ ERROR ] Failed to fork repository: {e}", style="red")
             raise
 
         try:
             self.clone_path = Path(self.handler.clone_repo(save_dir=str(self.save_dir), use_forked=self.handler.needs_fork))
             console.print(f"\n[ SUCCESS ] Repository cloned successfully: {self.clone_path}\n", style="green")
         except RepoAccessError as e:
-            console.print(f"[ ERROR ] Cannot access repository: {e}", style="red")
             raise
         except (PermissionError, OSError) as e:
-            console.print(f"[ ERROR ] Access denied while cloning repository: {e}", style="red")
-            console.print("💡 Close any editors or terminals using the directory and try again.", style="yellow")
-            raise
+            if "WinError 5" in str(e):
+                raise PermissionDeniedError(e)
+            else:
+                raise
         except Exception as e:
-            console.print(f"[ ERROR ] Unexpected error during cloning: {e}", style="red")
-            raise
+            raise UnexpectedAutoficError(e)
 
 class SemgrepHandler:
     def __init__(self, repo_path: Path, save_dir: Path):
@@ -127,11 +83,16 @@ class SemgrepHandler:
     def run(self):
         with create_progress() as progress:
             task = progress.add_task("[cyan]Running Semgrep...", total=100)
-            for _ in range(100):
-                progress.update(task, advance=1)
-                time.sleep(0.01)
+            start = time.time()
             runner = SemgrepRunner(repo_path=str(self.repo_path), rule="p/javascript")
             result = runner.run_semgrep()
+            end = time.time()
+
+            duration = max(end - start, 0.1)
+            step = duration / 100
+            for _ in range(100):
+                progress.update(task, advance=1)
+                time.sleep(step)
             progress.update(task, completed=100)
 
         if result.returncode != 0:
@@ -165,11 +126,16 @@ class CodeQLHandler:
     def run(self):
         with create_progress() as progress:
             task = progress.add_task("[cyan]Running CodeQL...", total=100)
-            for _ in range(100):
-                progress.update(task, advance=1)
-                time.sleep(0.01)
+            start = time.time()
             runner = CodeQLRunner(repo_path=str(self.repo_path))
             result_path = runner.run_codeql()
+            end = time.time()
+
+            duration = max(end - start, 0.1)
+            step = duration / 100
+            for _ in range(100):
+                progress.update(task, advance=1)
+                time.sleep(step)
             progress.update(task, completed=100)
 
         with open(result_path, "r", encoding="utf-8") as f:
@@ -202,11 +168,16 @@ class SnykCodeHandler:
     def run(self):
         with create_progress() as progress:
             task = progress.add_task("[cyan]Running SnykCode...", total=100)
-            for _ in range(100):
-                progress.update(task, advance=1)
-                time.sleep(0.01)
+            start = time.time()
             runner = SnykCodeRunner(repo_path=str(self.repo_path))
             result = runner.run_snykcode()
+            end = time.time()
+
+            duration = max(end - start, 0.1)
+            step = duration / 100
+            for _ in range(100):
+                progress.update(task, advance=1)
+                time.sleep(step)
             progress.update(task, completed=100)
 
         return self._post_process(json.loads(result.stdout))
@@ -254,8 +225,7 @@ class SASTAnalyzer:
             merged_path = self.handler.run()
             return merged_path
         except Exception as e:
-            console.print(f"[ ERROR ] SAST tool [{self.tool}] failed: {e}", style="red")
-            raise
+            raise SASTExecutionError(self.tool, e)
 
     def save_snippets(self, merged_snippets_path: Path):
         with open(merged_snippets_path, "r", encoding="utf-8") as f:
@@ -270,8 +240,8 @@ class SASTAnalyzer:
             elif isinstance(snippet_data, BaseSnippet):
                 snippet_obj = snippet_data
             else:
-                raise TypeError(f"[ ERROR ] Unknown snippet type: {type(snippet_data)}")
-            
+                raise UnknownSnippetTypeError(snippet_data)
+                        
             filename_base = snippet_obj.path.replace("\\", "_").replace("/", "_")
             filename = f"snippet_{filename_base}.json"
             path = snippets_dir / filename
@@ -296,10 +266,18 @@ class LLMProcessor:
 
         prompt_generator = PromptGenerator()
         merged_path = self.save_dir / "sast" / "merged_snippets.json"
-        with open(merged_path, "r", encoding="utf-8") as f:
-            merged_data = json.load(f)
-        file_snippets = [BaseSnippet(**item) for item in merged_data]
-        prompts = prompt_generator.generate_prompts(file_snippets)
+       
+        try:
+            with open(merged_path, "r", encoding="utf-8") as f:
+                merged_data = json.load(f)
+        except Exception as e:
+            raise MergedSnippetsLoadError(merged_path, e)
+        
+        try:
+            file_snippets = [BaseSnippet(**item) for item in merged_data]
+            prompts = prompt_generator.generate_prompts(file_snippets)
+        except Exception as e:
+            raise PromptGeneratorErrorMessages()
         
         if not prompts:
             console.print("[INFO] No valid prompts generated. Skipping LLM stage.\n", style="cyan")
@@ -311,9 +289,15 @@ class LLMProcessor:
         console.print("Starting GPT response generation\n")
         with create_progress() as progress:
             task = progress.add_task("[magenta]Generating LLM responses...", total=len(prompts))
+            
             for p in prompts:
-                response = llm.run(p.prompt)
+                try:
+                    response = llm.run(p.prompt)
+                except Exception as e:
+                    raise LLMExecutionError(e)
+                
                 save_md_response(response, p, output_dir=self.llm_output_dir)
+                
                 progress.update(task, advance=1)
                 time.sleep(0.01)
             progress.update(task, completed=100)
@@ -552,8 +536,6 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
             secret_slack = os.getenv('SLACK_WEBHOOK_URL')
             token = os.getenv('GITHUB_TOKEN')
             user_name = os.getenv('USER_NAME')
-            slack_webhook = os.environ.get('SLACK_WEBHOOK_URL')
-            discord_webhook = os.environ.get('DISCORD_WEBHOOK_URL')
 
             # Define PRProcedure class
             json_path = str(save_dir.parent / "sast" / "before.json") 
@@ -593,7 +575,7 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
             log_manager.add_repo_status(repo_data)
 
     except Exception as e:
-        console.print(f"[ ERROR ] {e}", style="red")
-    
+            raise UnexpectedAutoficError(e)
+
 if __name__ == "__main__":
     main()
