@@ -50,4 +50,6 @@ autofic-core = "autofic_core.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-packages = ["autofic_core"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
