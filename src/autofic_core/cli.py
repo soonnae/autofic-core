@@ -125,7 +125,6 @@ class SemgrepHandler:
         self.save_dir = save_dir
 
     def run(self):
-        console.print("\n[Tool: Semgrep].\n", style="cyan")
         with create_progress() as progress:
             task = progress.add_task("[cyan]Running Semgrep...", total=100)
             for _ in range(100):
@@ -152,7 +151,8 @@ class SemgrepHandler:
             json.dump([s.model_dump() for s in merged], f, indent=2, ensure_ascii=False)
 
         if not merged:
-            console.print("[INFO] No vulnerabilities found.\n", style="cyan")
+            console.print("\n[ INFO ] No vulnerabilities found.\n", style="yellow")
+            console.print("AutoFiC automation has been halted.--llm, --patch, and --pr stages will not be executed.\n", style="yellow")
             return None
 
         return merged_path
@@ -163,7 +163,6 @@ class CodeQLHandler:
         self.save_dir = save_dir
 
     def run(self):
-        console.print("\n[Tool: CodeQL]\n", style="cyan")
         with create_progress() as progress:
             task = progress.add_task("[cyan]Running CodeQL...", total=100)
             for _ in range(100):
@@ -189,7 +188,8 @@ class CodeQLHandler:
             json.dump([s.model_dump() for s in merged], f, indent=2, ensure_ascii=False)
 
         if not merged:
-            console.print("[INFO] No vulnerabilities found.\n", style="cyan")
+            console.print("\n[ INFO ] No vulnerabilities found.\n", style="yellow")
+            console.print("AutoFiC automation has been halted.--llm, --patch, and --pr stages will not be executed.\n", style="yellow")
             return None
 
         return merged_path
@@ -200,7 +200,6 @@ class SnykCodeHandler:
         self.save_dir = save_dir
 
     def run(self):
-        console.print("\n[Tool: SnykCode]\n", style="cyan")
         with create_progress() as progress:
             task = progress.add_task("[cyan]Running SnykCode...", total=100)
             for _ in range(100):
@@ -224,7 +223,8 @@ class SnykCodeHandler:
             json.dump([s.model_dump() for s in merged], f, indent=2, ensure_ascii=False)
 
         if not merged:
-            console.print("[INFO] No vulnerabilities found.\n", style="cyan")
+            console.print("\n[ INFO ] No vulnerabilities found.\n", style="yellow")
+            console.print("AutoFiC automation has been halted.--llm, --patch, and --pr stages will not be executed.\n", style="yellow")
             return None
 
         return merged_path
