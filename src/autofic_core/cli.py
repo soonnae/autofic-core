@@ -46,8 +46,10 @@ class RepositoryManager:
         try:
             self.handler = GitHubRepoHandler(repo_url=self.repo_url)
         except GitHubTokenMissingError as e:
+            console.print(f"[ ERROR ] GitHub token is missing: {e}", style="red")
             raise
         except RepoURLFormatError as e:
+            console.print(f"[ ERROR ] Invalid repository URL: {e}", style="red")
             raise
 
     def clone(self):
@@ -60,20 +62,22 @@ class RepositoryManager:
                 time.sleep(1)
                 console.print("\n[ SUCCESS ] Fork completed\n", style="green")
         except ForkFailedError as e:
+            console.print(f"[ ERROR ] Failed to fork repository: {e}", style="red")
             raise
 
         try:
             self.clone_path = Path(self.handler.clone_repo(save_dir=str(self.save_dir), use_forked=self.handler.needs_fork))
             console.print(f"\n[ SUCCESS ] Repository cloned successfully: {self.clone_path}\n", style="green")
         except RepoAccessError as e:
+            console.print(f"[ ERROR ] Cannot access repository: {e}", style="red")
             raise
         except (PermissionError, OSError) as e:
-            if "WinError 5" in str(e):
-                raise PermissionDeniedError(e)
-            else:
-                raise
+            console.print(f"[ ERROR ] Access denied while cloning repository: {e}", style="red")
+            console.print("💡 Close any editors or terminals using the directory and try again.", style="yellow")
+            raise
         except Exception as e:
-            raise UnexpectedAutoficError(e)
+            console.print(f"[ ERROR ] Unexpected error during cloning: {e}", style="red")
+            raise
 
 class SemgrepHandler:
     def __init__(self, repo_path: Path, save_dir: Path):
@@ -225,7 +229,8 @@ class SASTAnalyzer:
             merged_path = self.handler.run()
             return merged_path
         except Exception as e:
-            raise SASTExecutionError(self.tool, e)
+            console.print(f"[ ERROR ] SAST tool [{self.tool}] failed: {e}", style="red")
+            raise
 
     def save_snippets(self, merged_snippets_path: Path):
         with open(merged_snippets_path, "r", encoding="utf-8") as f:
@@ -240,7 +245,8 @@ class SASTAnalyzer:
             elif isinstance(snippet_data, BaseSnippet):
                 snippet_obj = snippet_data
             else:
-                raise UnknownSnippetTypeError(snippet_data)
+                raise TypeError(f"[ ERROR ] Unknown snippet type: {type(snippet_data)}")
+
                         
             filename_base = snippet_obj.path.replace("\\", "_").replace("/", "_")
             filename = f"snippet_{filename_base}.json"
@@ -266,18 +272,11 @@ class LLMProcessor:
 
         prompt_generator = PromptGenerator()
         merged_path = self.save_dir / "sast" / "merged_snippets.json"
-       
-        try:
-            with open(merged_path, "r", encoding="utf-8") as f:
-                merged_data = json.load(f)
-        except Exception as e:
-            raise MergedSnippetsLoadError(merged_path, e)
-        
-        try:
-            file_snippets = [BaseSnippet(**item) for item in merged_data]
-            prompts = prompt_generator.generate_prompts(file_snippets)
-        except Exception as e:
-            raise PromptGeneratorErrorMessages()
+
+        with open(merged_path, "r", encoding="utf-8") as f:
+            merged_data = json.load(f)
+        file_snippets = [BaseSnippet(**item) for item in merged_data]
+        prompts = prompt_generator.generate_prompts(file_snippets)
         
         if not prompts:
             console.print("[INFO] No valid prompts generated. Skipping LLM stage.\n", style="cyan")
@@ -291,11 +290,8 @@ class LLMProcessor:
             task = progress.add_task("[magenta]Generating LLM responses...", total=len(prompts))
             
             for p in prompts:
-                try:
-                    response = llm.run(p.prompt)
-                except Exception as e:
-                    raise LLMExecutionError(e)
-                
+                response = llm.run(p.prompt)
+
                 save_md_response(response, p, output_dir=self.llm_output_dir)
                 
                 progress.update(task, advance=1)
@@ -575,7 +571,7 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
             log_manager.add_repo_status(repo_data)
 
     except Exception as e:
-            raise UnexpectedAutoficError(e)
+            console.print(f"[ ERROR ] {e}", style="red")
 
 if __name__ == "__main__":
     main()
