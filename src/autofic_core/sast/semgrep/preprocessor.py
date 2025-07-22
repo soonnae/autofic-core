@@ -14,13 +14,20 @@
 # limitations under the License.
 # =============================================================================
 
-import os
 import json
 from pathlib import Path
 from typing import List
 from autofic_core.sast.snippet import BaseSnippet
 
 class SemgrepPreprocessor:
+
+    @staticmethod
+    def ensure_list(value):
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return value
+        return [value]
 
     @staticmethod
     def read_json_file(path: str) -> dict:
@@ -74,10 +81,10 @@ class SemgrepPreprocessor:
                 end_line=end_line,
                 snippet=snippet,
                 message=extra.get("message", ""),
-                vulnerability_class=meta.get("vulnerability_class", []),
-                cwe=meta.get("cwe", []),
+                vulnerability_class=SemgrepPreprocessor.ensure_list(meta.get("vulnerability_class")),
+                cwe=SemgrepPreprocessor.ensure_list(meta.get("cwe")),
                 severity=extra.get("severity", ""),
-                references=meta.get("references", []),
+                references=SemgrepPreprocessor.ensure_list(meta.get("references")),
                 path=rel_path
             ))
 
