@@ -50,7 +50,7 @@ class PatchApplier:
                 failed_patches.append(patch_file)
 
         if failed_patches:
-            self.console.print(f"[cyan][ INFO ] {len(failed_patches)} patches failed → trying overwrite from parsed (see logs)[/cyan]")
+            self.console.print(f"\n[cyan][ INFO ] {len(failed_patches)} patches failed → trying overwrite from parsed (see logs)[/cyan]\n")
             for patch_file in failed_patches:
                 self.overwrite_with_parsed(patch_file)
 
@@ -66,7 +66,7 @@ class PatchApplier:
             )
 
             if result.returncode == 0:
-                self.console.print(f"[green][✓] Patch applied: {patch_file.name}[/green]")
+                self.console.print(f"[white][✓] Patch applied: {patch_file.name}[/white]")
                 return True
             else:
                 self.console.print(PatchFailMessages.PATCH_FAILED.format(patch_file.name), style="yellow")
@@ -123,7 +123,7 @@ class PatchApplier:
             )
 
             if result.returncode == 0:
-                self.console.print(f"[green][✓] Fallback diff applied: {fallback_diff.name}[/green]")
+                self.console.print(f"[white][✓] Fallback diff applied: {fallback_diff.name}[/white]")
                 return True
             else:
                 self.console.print(PatchFailMessages.FALLBACK_APPLY_FAILED.format(fallback_diff.name), style="red")
@@ -161,7 +161,7 @@ class PatchApplier:
 
         try:
             shutil.copyfile(matched_file, repo_file)
-            self.console.print(f"[green][✓] Overwrote repo file: {repo_file}[/green]")
+            self.console.print(f"[white][✓] Overwrote repo file: {repo_file}[/white]")
             return True
         except Exception as e:
             self.console.print(PatchErrorMessages.OVERWRITE_FAILED.format(e), style="red")

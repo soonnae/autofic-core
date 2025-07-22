@@ -35,11 +35,11 @@ console = Console()
 
 f = Figlet(font="slant")
 ascii_art = f.renderText("AutoFiC")
-console.print(f"[magenta]{ascii_art}[/magenta]")
+console.print(f"\n\n\n[magenta]{ascii_art}[/magenta]")
 
 
 def print_divider(title):
-    console.print(f"\n[bold magenta]{'-'*20} [ {title} ] {'-'*20}[/bold magenta]\n")
+    console.print(f"\n\n[bold magenta]{'-'*20} [ {title} ] {'-'*20}[/bold magenta]\n\n")
 
 
 def print_summary(repo_url: str, detected_issues_count: int, output_dir: str, response_files: list):
@@ -291,6 +291,7 @@ class LLMProcessor:
         self.patch_dir = save_dir / "patch"  
 
     def run(self):
+        console.print()
         print_divider("LLM Response Generation Stage")
 
         prompt_generator = PromptGenerator()
@@ -307,7 +308,7 @@ class LLMProcessor:
         llm = LLMRunner()
         self.llm_output_dir.mkdir(parents=True, exist_ok=True)
 
-        console.print("\nStarting GPT response generation\n")
+        console.print("Starting GPT response generation\n")
         with create_progress() as progress:
             task = progress.add_task("[magenta]Generating LLM responses...", total=len(prompts))
             for p in prompts:
@@ -351,7 +352,6 @@ class LLMProcessor:
         return retry_prompts, retry_output_dir
     
     def extract_and_save_parsed_code(self):
-        print_divider("LLM Response Parsing Stage")
         parser = ResponseParser(md_dir=self.llm_output_dir, diff_dir=self.parsed_dir)
         
         try:
@@ -360,9 +360,8 @@ class LLMProcessor:
             console.print(str(e), style="red")
             success = False
             
-        if success:
-            console.print(f"\n[ SUCCESS ] Parsed code saved → {self.parsed_dir}\n", style="green")
-        else:console.print(f"\n[ WARN ] No parsable content found in LLM responses.\n", style="yellow")
+        if not success:
+            console.print(f"\n[ WARN ] No parsable content found in LLM responses.\n", style="yellow")
 
 class PatchManager:
     def __init__(self, parsed_dir: Path, patch_dir: Path, repo_dir: Path):
