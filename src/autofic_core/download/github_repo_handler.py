@@ -56,9 +56,15 @@ performs a fork if necessary, and returns a repository object."""
         
         self.github = Github(self.token)
         self._owner, self._name = self.config.get_owner_and_name()
-        self._current_user = self.github.get_user().login
+        #self._current_user = self.github.get_user().login
 
-        self.needs_fork = self._owner != self._current_user     # 포크 필요 여부 판단
+        try:
+            self._current_user = self.github.get_user().login
+        except Exception as e:
+            raise GitHubTokenMissingError()
+
+
+        self.needs_fork = self._owner != self._current_user     # Determine whether you need a fork
     
     @staticmethod
     # Extract owner and name from URL
@@ -88,8 +94,20 @@ performs a fork if necessary, and returns a repository object."""
         response = requests.post(api_url, headers=headers)
         if response.status_code == 202:
             return True
-        else:
+        elif response.status_code == 401:
+            raise GitHubTokenMissingError()
+        elif response.status_code == 403:
+            raise RepoAccessError("Access forbidden to the repository (403 Forbidden).")
+        elif response.status_code == 404:
+            raise RepoAccessError("Repository not found (404 Not Found).")
+        elif response.status_code != 202:
+            # 그 외의 fork 실패는 진짜 fork 실패
             raise ForkFailedError(response.status_code, response.text)
+
+
+
+        #else:
+        #    raise ForkFailedError(response.status_code, response.text)
     
     #  Clone the repository to the given path. 
     # Use different repository URLs depending on whether it is forked or not.

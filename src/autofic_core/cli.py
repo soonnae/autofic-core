@@ -43,14 +43,14 @@ class RepositoryManager:
         self.repo_url = repo_url
         self.save_dir = save_dir
         self.clone_path = None
-        try:
-            self.handler = GitHubRepoHandler(repo_url=self.repo_url)
-        except GitHubTokenMissingError as e:
-            console.print(f"[ ERROR ] GitHub token is missing: {e}", style="red")
-            raise
-        except RepoURLFormatError as e:
-            console.print(f"[ ERROR ] Invalid repository URL: {e}", style="red")
-            raise
+        #try:
+        self.handler = GitHubRepoHandler(repo_url=self.repo_url)
+        #except GitHubTokenMissingError as e:
+        #    console.print(f"[ ERROR ] GitHub token is missing: {e}", style="red")
+        #    raise
+        #except RepoURLFormatError as e:
+            #console.print(f"[ ERROR ] Invalid repository URL: {e}", style="red")
+            #raise
 
     def clone(self):
         print_divider("Repository Cloning Stage")
@@ -61,23 +61,25 @@ class RepositoryManager:
                 self.handler.fork()
                 time.sleep(1)
                 console.print("\n[ SUCCESS ] Fork completed\n", style="green")
-        except ForkFailedError as e:
-            console.print(f"[ ERROR ] Failed to fork repository: {e}", style="red")
-            raise
 
-        try:
             self.clone_path = Path(self.handler.clone_repo(save_dir=str(self.save_dir), use_forked=self.handler.needs_fork))
             console.print(f"\n[ SUCCESS ] Repository cloned successfully: {self.clone_path}\n", style="green")
+
+        except ForkFailedError as e:
+            #raise
+            sys.exit(1)
+
         except RepoAccessError as e:
             console.print(f"[ ERROR ] Cannot access repository: {e}", style="red")
-            raise
+            #raise
+            sys.exit(1)
+
+
         except (PermissionError, OSError) as e:
             console.print(f"[ ERROR ] Access denied while cloning repository: {e}", style="red")
-            console.print("💡 Close any editors or terminals using the directory and try again.", style="yellow")
-            raise
-        except Exception as e:
-            console.print(f"[ ERROR ] Unexpected error during cloning: {e}", style="red")
-            raise
+            console.print("Close any editors or terminals using the directory and try again.", style="yellow")
+            #raise
+            sys.exit(1)
 
 class SemgrepHandler:
     def __init__(self, repo_path: Path, save_dir: Path):

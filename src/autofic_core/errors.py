@@ -6,17 +6,17 @@ class AutoficError(Exception):
 
 class GitHubTokenMissingError(AutoficError):
     def __init__(self):
-        super().__init__("GITHUB_TOKEN is not set in the environment.")
+        super().__init__(f"GitHub token is missing: GITHUB_TOKEN is not set in the environment.")
 
 class RepoURLFormatError(AutoficError):
     def __init__(self, repo_url):
         super().__init__(f"Invalid GitHub repository URL format: {repo_url}")
 
 class RepoAccessError(AutoficError):
-    def __init__(self):
-        super().__init__("Failed to access the repository.")
+    def __init__(self, message="Failed to access the repository."):
+        super().__init__(message)
 
-class ForkFailedError(RepoAccessError):
+class ForkFailedError(AutoficError):
     def __init__(self, status_code, message):
         super().__init__(f"Failed to fork repository (HTTP {status_code}) - {message}")
 
