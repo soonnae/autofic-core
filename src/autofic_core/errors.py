@@ -6,19 +6,24 @@ class AutoficError(Exception):
 
 class GitHubTokenMissingError(AutoficError):
     def __init__(self):
-        super().__init__(f"GitHub token is missing: GITHUB_TOKEN is not set in the environment.")
+        message = f"GitHub token is missing: GITHUB_TOKEN is not set in the environment."
+        super().__init__(message)
 
 class RepoURLFormatError(AutoficError):
     def __init__(self, repo_url):
-        super().__init__(f"Invalid GitHub repository URL format: {repo_url}")
-
-class RepoAccessError(AutoficError):
-    def __init__(self, message="Failed to access the repository."):
+        message = f"Invalid GitHub repository URL format: {repo_url}"
         super().__init__(message)
 
+class RepoAccessError(AutoficError):
+    def __init__(self, original_error):
+        message = f"Cannot access repository: {original_error}"
+        super().__init__(message)
+        self.original_error = original_error
+
 class ForkFailedError(AutoficError):
-    def __init__(self, status_code, message):
-        super().__init__(f"Failed to fork repository (HTTP {status_code}) - {message}")
+    def __init__(self, status_code, msg):
+        message = f"Failed to fork repository (HTTP {status_code}) - {msg}"
+        super().__init__(message)
 
 # downloader.py
 

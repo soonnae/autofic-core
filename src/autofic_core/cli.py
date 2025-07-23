@@ -43,14 +43,12 @@ class RepositoryManager:
         self.repo_url = repo_url
         self.save_dir = save_dir
         self.clone_path = None
-        #try:
-        self.handler = GitHubRepoHandler(repo_url=self.repo_url)
-        #except GitHubTokenMissingError as e:
-        #    console.print(f"[ ERROR ] GitHub token is missing: {e}", style="red")
-        #    raise
-        #except RepoURLFormatError as e:
-            #console.print(f"[ ERROR ] Invalid repository URL: {e}", style="red")
-            #raise
+        try:
+            self.handler = GitHubRepoHandler(repo_url=self.repo_url)
+        except GitHubTokenMissingError as e:
+            raise
+        except RepoURLFormatError as e:
+            raise
 
     def clone(self):
         print_divider("Repository Cloning Stage")
@@ -70,10 +68,7 @@ class RepositoryManager:
             sys.exit(1)
 
         except RepoAccessError as e:
-            console.print(f"[ ERROR ] Cannot access repository: {e}", style="red")
-            #raise
-            sys.exit(1)
-
+            raise
 
         except (PermissionError, OSError) as e:
             console.print(f"[ ERROR ] Access denied while cloning repository: {e}", style="red")
@@ -572,8 +567,15 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
             log_manager.add_pr_log(pr_log_data)
             log_manager.add_repo_status(repo_data)
 
+    #except Exception as e:
+    #        console.print(f"[ ERROR ] {e}", style="red")
+
+    except AutoficError as e:
+        console.print(str(e), style="red")
+        sys.exit(1)
     except Exception as e:
-            console.print(f"[ ERROR ] {e}", style="red")
+        console.print(f"[ UNEXPECTED ERROR ] {str(e)}", style="red")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

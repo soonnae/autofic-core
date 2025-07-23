@@ -95,11 +95,11 @@ performs a fork if necessary, and returns a repository object."""
         if response.status_code == 202:
             return True
         elif response.status_code == 401:
-            raise GitHubTokenMissingError()
+            raise GitHubTokenMissingError("GITHUB_TOKEN is not set in the environment.")
+        elif response.status_code == 404:
+            raise RepoURLFormatError("Repository not found (404 Not Found).")
         elif response.status_code == 403:
             raise RepoAccessError("Access forbidden to the repository (403 Forbidden).")
-        elif response.status_code == 404:
-            raise RepoAccessError("Repository not found (404 Not Found).")
         elif response.status_code != 202:
             # 그 외의 fork 실패는 진짜 fork 실패
             raise ForkFailedError(response.status_code, response.text)
@@ -134,5 +134,12 @@ performs a fork if necessary, and returns a repository object."""
                 raise ValueError(f"The specified path is not a directory : {repo_path}")
 
         clone_url = f"https://github.com/{self._current_user}/{self._name}.git"
-        subprocess.run(['git', 'clone', clone_url, repo_path], check=True)
+        try:
+            subprocess.run(['git', 'clone', clone_url, repo_path], check=True,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            text=True)
+        except subprocess.CalledProcessError as e:
+            raise RepoAccessError(e)
+        
         return repo_path
