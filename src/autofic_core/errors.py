@@ -6,23 +6,23 @@ class AutoficError(Exception):
 
 class GitHubTokenMissingError(AutoficError):
     def __init__(self):
-        message = f"GitHub token is missing: GITHUB_TOKEN is not set in the environment."
+        message = f"[ ERROR ]  GitHub token is missing: GITHUB_TOKEN is not set in the environment."
         super().__init__(message)
 
 class RepoURLFormatError(AutoficError):
     def __init__(self, repo_url):
-        message = f"Invalid GitHub repository URL format: {repo_url}"
+        message = f"[ ERROR ]  Invalid GitHub repository URL format: {repo_url}"
         super().__init__(message)
 
 class RepoAccessError(AutoficError):
     def __init__(self, original_error):
-        message = f"Cannot access repository: {original_error}"
+        message = f"[ ERROR ]  Cannot access repository: {original_error}"
         super().__init__(message)
         self.original_error = original_error
 
 class ForkFailedError(AutoficError):
     def __init__(self, status_code, msg):
-        message = f"Failed to fork repository (HTTP {status_code}) - {msg}"
+        message = f"[ ERROR ]  Failed to fork repository (HTTP {status_code}) - {msg}"
         super().__init__(message)
 
 # downloader.py
@@ -131,28 +131,17 @@ class PatchFailMessages:
 
 # # cli.py
 
-# class PermissionDeniedError(AutoficError):
-#     def __init__(self, original_exception: Exception):
-#         message = (
-#             f"{original_exception}\n"
-#             "Please close any editors or terminals using the folder and try again."
-#         )
-#         super().__init__(message)
+class NoRepositoryError(AutoficError):
+    def __init__(self):
+        message = f"[ ERROR ]  The --repo option is required!"
+        super().__init__(message)
 
-# class UnexpectedAutoficError(AutoficError):
-#     def __init__(self, original_exception: Exception):
-#         super().__init__("An unexpected error occurred: {original_exception}\n")
+class LLMRetryOptionError(AutoficError):
+    def __init__(self):
+        message = f"[ ERROR ]  The --llm-retry option includes --llm automatically. Do not specify both!"
+        super().__init__(message)
 
-# class SASTExecutionError(AutoficError):
-#     def __init__(self, tool: str, original_exception: Exception):
-#         super().__init__("SAST tool [{tool}] failed to execute: {original_exception}\n")
-#         self.tool = tool
-#         self.original_exception = original_exception
-
-# class UnknownSnippetTypeError(AutoficError):
-#     def __init__(self, obj):
-#         super().__init__("Unknown snippet type encountere.")
-
-# class MergedSnippetsLoadError(AutoficError):
-#     def __init__(self, original_exception: Exception):
-#         super().__init__("Failed to load merged snippets from your path.\n")
+class LLMWithoutSastError(AutoficError):
+    def __init__(self):
+        message = f"[ ERROR ] The --llm or --llm-retry options cannot be used without --sast!"
+        super().__init__(message)

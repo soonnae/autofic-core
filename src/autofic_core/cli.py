@@ -485,24 +485,21 @@ SAST_TOOL_CHOICES = ['semgrep', 'codeql', 'snykcode']
 def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
     log_manager = LogManager()
     log_gen = LogGenerator()
-    
-    if explain:
-        print_help_message()
-        return
-
-    if not repo:
-        click.echo(" --repo is required!", err=True)
-        return
-
-    if llm and llm_retry:
-        click.secho("[ ERROR ]  The --llm-retry option includes --llm automatically. Do not specify both!", fg="red")
-        return
-
-    if not sast and (llm or llm_retry):
-        click.secho("[ ERROR ] The --llm or --llm-retry options cannot be used without --sast!", fg="red")
-        return
 
     try:
+        if explain:
+            print_help_message()
+            return
+
+        if not repo:
+            raise NoRepositoryError()
+
+        if llm and llm_retry:
+            raise LLMRetryOptionError()
+        
+        if not sast and (llm or llm_retry):
+            raise LLMWithoutSastError()
+        
         llm_flag = llm or llm_retry
         pipeline = AutoFiCPipeline(repo, Path(save_dir), sast, llm=llm_flag, llm_retry=llm_retry, sast_tool=sast.lower())
         pipeline.run()
@@ -517,7 +514,7 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
             patch_manager.run()
 
         if pr:
-            # PR 자동화
+            # PR automation
             branch_num = 1
             base_branch = 'main'
             branch_name = "UNKNOWN"
@@ -566,9 +563,6 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
             pr_log_data = log_gen.generate_pr_log(owner=upstream_owner, repo=repo_name, user_name=user_name, repo_url=repo_url, repo_hash=repo_data["repo_hash"], pr_number=pr_number)
             log_manager.add_pr_log(pr_log_data)
             log_manager.add_repo_status(repo_data)
-
-    #except Exception as e:
-    #        console.print(f"[ ERROR ] {e}", style="red")
 
     except AutoficError as e:
         console.print(str(e), style="red")
