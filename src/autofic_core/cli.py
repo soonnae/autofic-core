@@ -504,6 +504,12 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
         if not sast and (llm or llm_retry):
             raise LLMWithoutSastError()
         
+        if not (llm or llm_retry) and patch:
+            raise PatchWithoutLLMError()
+        
+        if not patch and pr:
+            raise PRWithoutPatchError()
+        
         llm_flag = llm or llm_retry
         pipeline = AutoFiCPipeline(repo, Path(save_dir), sast, llm=llm_flag, llm_retry=llm_retry, sast_tool=sast.lower())
         pipeline.run()

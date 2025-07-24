@@ -63,6 +63,7 @@ def print_help_message():
   - The --save-dir option must be entered as an absolute path.
   - The --sast option must be run before using --llm or --llm-retry options.
   - The --llm and --llm-retry options can only be used with one of them.
+  - The --patch option must be run before using --llm or --llm-retry options.
   - The --pr option must be run before using --patch option.
     """)
 

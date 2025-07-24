@@ -151,3 +151,13 @@ class LLMWithoutSastError(AutoficError):
         message = f"[ ERROR ]  The --llm or --llm-retry options cannot be used without --sast!"
         super().__init__(message)
 
+class PatchWithoutLLMError(AutoficError):
+    def __init__(self):
+        message = f"[ ERROR ]  The --patch option cannot be used without --llm or --llm-retry"
+        super().__init__(message)
+
+class PRWithoutPatchError(AutoficError):
+    def __init__(self):
+        message = f"[ ERROR ]  The --pr option cannot be used without --patch!"
+        super().__init__(message)
+
