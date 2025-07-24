@@ -129,11 +129,16 @@ class PatchFailMessages:
     PATCH_FAILED = "[ FAIL ] Patch failed: {}"
     FALLBACK_APPLY_FAILED = "[ FAIL ] Fallback diff failed: {}"
 
-# # cli.py
+# cli.py
 
 class NoRepositoryError(AutoficError):
     def __init__(self):
         message = f"[ ERROR ]  The --repo option is required!"
+        super().__init__(message)
+
+class NoSaveDirError(AutoficError):
+    def __init__(self):
+        message = f"[ ERROR ]  The --save-dir option is required"
         super().__init__(message)
 
 class LLMRetryOptionError(AutoficError):
@@ -143,5 +148,6 @@ class LLMRetryOptionError(AutoficError):
 
 class LLMWithoutSastError(AutoficError):
     def __init__(self):
-        message = f"[ ERROR ] The --llm or --llm-retry options cannot be used without --sast!"
+        message = f"[ ERROR ]  The --llm or --llm-retry options cannot be used without --sast!"
         super().__init__(message)
+

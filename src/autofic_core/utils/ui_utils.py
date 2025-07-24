@@ -27,23 +27,42 @@ def print_summary(repo_url: str, detected_issues_count: int, output_dir: str, re
 
 
 def print_help_message():
-    console.print("\n\n [ AutoFiC CLI Usage Guide ]", fg="magenta", bold=True)
-    console.print("""
+    console.print("\n\n[blod magenta][ AutoFiC CLI Usage Guide ][/blod magenta]")
+    console.print(r"""
+
+✔️ How to use options:
 
 --explain       Display AutoFiC usage guide
 
 --repo          GitHub repository URL to analyze (required)
---save-dir      Directory to save analysis results (default: artifacts/downloaded_repo)
+--save-dir      Directory to save analysis results (required)
 
 --sast          Run SAST analysis using selected tool (semgrep, codeql, snyk)
 
 --llm           Run LLM to fix vulnerable code and save response
 --llm-retry     Re-run LLM to verify and finalize code
 
-\n※ Example usage:
-    python -m autofic_core.cli --repo https://github.com/user/project --sast --llm
+--patch         Generate diff and apply it to original file
+
+--pr            Pull request the final modified files to both my forked repository and the original repository
+
+
+
+※ Example usage:
+
+    [ For Window ]
+    ->  python -m autofic_core.cli --repo https://github.com/user/project --save-dir "C:\\Users\Username\\download\\AutoFiCResult" --sast --llm --patch --pr
+
+    [ For Mac ]
+    ->  python -m autofic_core.cli --repo https://github.com/user/project --save-dir "/Users/Username/Desktop/AutoFiCResult" --sast semgrep --llm --patch --pr
+
+
 
 ⚠️ Note:
-  - The --sast option must be run before using --llm or --llm-retry
+
+  - The --save-dir option must be entered as an absolute path.
+  - The --sast option must be run before using --llm or --llm-retry options.
+  - The --llm and --llm-retry options can only be used with one of them.
+  - The --pr option must be run before using --patch option.
     """)
 

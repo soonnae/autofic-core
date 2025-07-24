@@ -1,0 +1,66 @@
+{
+  "version": "1.122.0",
+  "results": [
+    {
+      "check_id": "problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification",
+      "path": "/Users/kim-eunsol/Desktop/autofic/autofic-core/artifacts/downloaded_repo/repo/src/lib/http_request.js",
+      "start": {
+        "line": 62,
+        "col": 27,
+        "offset": 1714
+      },
+      "end": {
+        "line": 70,
+        "col": 10,
+        "offset": 2054
+      },
+      "extra": {
+        "message": "Checks for setting the environment variable NODE_TLS_REJECT_UNAUTHORIZED to 0, which disables TLS verification. This should only be used for debugging purposes. Setting the option rejectUnauthorized to false bypasses verification against the list of trusted CAs, which also leads to insecure transport. These options lead to vulnerability to MTM attacks, and should not be used.",
+        "metadata": {
+          "likelihood": "MEDIUM",
+          "impact": "MEDIUM",
+          "confidence": "MEDIUM",
+          "category": "security",
+          "cwe": "CWE-319: Cleartext Transmission of Sensitive Information",
+          "owasp": "A03:2017 - Sensitive Data Exposure",
+          "references": [
+            "https://nodejs.org/api/https.html#https_https_request_options_callback",
+            "https://stackoverflow.com/questions/20433287/node-js-request-cert-has-expired#answer-29397100"
+          ],
+          "subcategory": [
+            "vuln"
+          ],
+          "technology": [
+            "node.js"
+          ],
+          "vulnerability": "Insecure Transport",
+          "license": "Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license",
+          "vulnerability_class": [
+            "Mishandled Sensitive Information"
+          ],
+          "source": "https://semgrep.dev/r/problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification",
+          "shortlink": "https://sg.run/9oxr"
+        },
+        "severity": "WARNING",
+        "fingerprint": "requires login",
+        "lines": "requires login",
+        "validation_state": "NO_VALIDATOR",
+        "engine_kind": "OSS"
+      }
+    }
+  ],
+  "errors": [],
+  "paths": {
+    "scanned": [
+      "/Users/kim-eunsol/Desktop/autofic/autofic-core/artifacts/downloaded_repo/repo/index.js",
+      "/Users/kim-eunsol/Desktop/autofic/autofic-core/artifacts/downloaded_repo/repo/src/lib/auth.js",
+      "/Users/kim-eunsol/Desktop/autofic/autofic-core/artifacts/downloaded_repo/repo/src/lib/betfair_price.js",
+      "/Users/kim-eunsol/Desktop/autofic/autofic-core/artifacts/downloaded_repo/repo/src/lib/cookie_jar.js",
+      "/Users/kim-eunsol/Desktop/autofic/autofic-core/artifacts/downloaded_repo/repo/src/lib/http_request.js",
+      "/Users/kim-eunsol/Desktop/autofic/autofic-core/artifacts/downloaded_repo/repo/src/lib/invocation.js",
+      "/Users/kim-eunsol/Desktop/autofic/autofic-core/artifacts/downloaded_repo/repo/src/lib/logger.js",
+      "/Users/kim-eunsol/Desktop/autofic/autofic-core/artifacts/downloaded_repo/repo/src/lib/session.js"
+    ]
+  },
+  "skipped_rules": []
+}
