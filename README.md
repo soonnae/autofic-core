@@ -159,15 +159,20 @@ This project is licensed under the Apache 2.0 License - see the [LICENSE](https:
 
 ## 👨‍💻 Developers
 
-| Name | GitHub | Role |
-|------|--------|------|
-| Minchae Kim | [@minxxcozy](https://github.com/minxxcozy) | 👩🏻‍💻 Development Team |
-| Eunsol Kim | [@eunsol1530](https://github.com/eunsol1530) | 👩🏻‍💻 Development Team |
-| Jeongmin Oh | [@soonae](https://github.com/soonnae) | 👩🏻‍💻 Development Team |
-| Inyeong Jang | [@inyeongjang](https://github.com/inyeongjang) | 👩🏻‍💻 Development Team |
-| Hongseo Jang | [@pxxguin](https://github.com/pxxguin) | 🔬 Research Team |
-| Yunji Jeong | [@jungyun404](https://github.com/jungyun404) | 🔬 Research Team |
-| Yunjeong Choe | [@yjchoe818](https://github.com/yjchoe818) | 🔬 Research Team |
-| Seonju Park | [@seoonju](https://github.com/seoonju) | 🔬 Research Team |
-| Suhyun Park | [@lovehyun](https://github.com/lovehyun) | 👨🏻‍🏫 Mentor |
-| Changhyun Lee | [@eeche](https://github.com/eeche) | 👨🏻‍🏫 Project Leader |
+**👩🏻‍💻 Development Team**
+- Minchae Kim [@minxxcozy](https://github.com/minxxcozy) 
+- Eunsol Kim  [@eunsol1530](https://github.com/eunsol1530)
+| Jeongmin Oh | [@soonae](https://github.com/soonnae) 
+| Inyeong Jang | [@inyeongjang](https://github.com/inyeongjang) 
+
+**🔬 Research Team**
+- Hongseo Jang | [@pxxguin](https://github.com/pxxguin) 
+- Yunji Jeong | [@jungyun404](https://github.com/jungyun404) 
+- Yunjeong Choe | [@yjchoe818](https://github.com/yjchoe818) 
+- Seonju Park [@seoonju](https://github.com/seoonju) 
+
+**👨🏻‍🏫 Mentor**
+- Suhyun Park [@lovehyun](https://github.com/lovehyun) 
+
+**👨🏻‍🏫 Project Leader**
+- Changhyun Lee [@eeche](https://github.com/eeche) 
