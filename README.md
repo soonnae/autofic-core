@@ -160,19 +160,19 @@ This project is licensed under the Apache 2.0 License - see the [LICENSE](https:
 ## 👨‍💻 Developers
 
 **👩🏻‍💻 Development Team**
-- Minchae Kim [@minxxcozy](https://github.com/minxxcozy) 
-- Eunsol Kim  [@eunsol1530](https://github.com/eunsol1530)
-| Jeongmin Oh | [@soonae](https://github.com/soonnae) 
-| Inyeong Jang | [@inyeongjang](https://github.com/inyeongjang) 
+- Minchae Kim ([@minxxcozy](https://github.com/minxxcozy))
+- Eunsol Kim ([@eunsol1530](https://github.com/eunsol1530))
+- Jeongmin Oh ([@soonae](https://github.com/soonnae))
+- Inyeong Jang ([@inyeongjang](https://github.com/inyeongjang))
 
 **🔬 Research Team**
-- Hongseo Jang | [@pxxguin](https://github.com/pxxguin) 
-- Yunji Jeong | [@jungyun404](https://github.com/jungyun404) 
-- Yunjeong Choe | [@yjchoe818](https://github.com/yjchoe818) 
-- Seonju Park [@seoonju](https://github.com/seoonju) 
+- Seonju Park ([@seoonju](https://github.com/seoonju))
+- Hongseo Jang ([@pxxguin](https://github.com/pxxguin))
+- Yunji Jeong ([@jungyun404](https://github.com/jungyun404))
+- Yunjeong Choe ([@yjchoe818](https://github.com/yjchoe818))
 
 **👨🏻‍🏫 Mentor**
-- Suhyun Park [@lovehyun](https://github.com/lovehyun) 
+- Suhyun Park ([@lovehyun](https://github.com/lovehyun))
 
 **👨🏻‍🏫 Project Leader**
-- Changhyun Lee [@eeche](https://github.com/eeche) 
+- Changhyun Lee ([@eeche](https://github.com/eeche))
