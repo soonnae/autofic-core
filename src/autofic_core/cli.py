@@ -4,6 +4,7 @@ import time
 import os
 import sys
 from autofic_core.errors import *
+import traceback
 from pathlib import Path
 from rich.console import Console
 from pyfiglet import Figlet
@@ -45,9 +46,7 @@ class RepositoryManager:
         self.clone_path = None
         try:
             self.handler = GitHubRepoHandler(repo_url=self.repo_url)
-        except GitHubTokenMissingError as e:
-            raise
-        except RepoURLFormatError as e:
+        except (GitHubTokenMissingError, RepoURLFormatError) :
             raise
 
     def clone(self):
@@ -64,17 +63,13 @@ class RepositoryManager:
             console.print(f"\n[ SUCCESS ] Repository cloned successfully: {self.clone_path}\n", style="green")
 
         except ForkFailedError as e:
-            #raise
             sys.exit(1)
 
         except RepoAccessError as e:
             raise
 
         except (PermissionError, OSError) as e:
-            console.print(f"[ ERROR ] Access denied while cloning repository: {e}", style="red")
-            console.print("Close any editors or terminals using the directory and try again.", style="yellow")
-            #raise
-            sys.exit(1)
+            raise AccessDeniedError(path=str(self.save_dir), original_error=e)
 
 class SemgrepHandler:
     def __init__(self, repo_path: Path, save_dir: Path):
@@ -304,7 +299,7 @@ class LLMProcessor:
         retry_prompt_generator = RetryPromptGenerator(parsed_dir=self.parsed_dir)
         retry_prompts = retry_prompt_generator.generate_prompts()
 
-        console.print("[RETRY] Regenerating GPT responses for modified files...\n")
+        console.print("[ RETRY ] Regenerating GPT responses for modified files...\n")
 
         llm = LLMRunner() 
         retry_output_dir = self.save_dir / "retry_llm"
@@ -407,7 +402,7 @@ class AutoFiCPipeline:
             
             merged_path = self.save_dir / "sast" / "merged_snippets.json"
             if not merged_path.exists():
-                console.print("[INFO] No merged_snippets.json file found. Skipping LLM stage.\n", style="cyan")
+                console.print("[ INFO ] No merged_snippets.json file found. Skipping LLM stage.\n", style="cyan")
                 sys.exit(0)
 
             with open(merged_path, "r", encoding="utf-8") as f:
@@ -422,7 +417,7 @@ class AutoFiCPipeline:
                 sys.exit(1)
             
             if not prompts:
-                console.print("[INFO] No valid prompts returned from LLM processor. Exiting pipeline early.\n", style="cyan")
+                console.print("[ INFO ] No valid prompts returned from LLM processor. Exiting pipeline early.\n", style="cyan")
                 sys.exit(0)
 
             self.llm_processor.extract_and_save_parsed_code()
@@ -580,6 +575,7 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
 
     except Exception as e:
         console.print(f"[ UNEXPECTED ERROR ] {str(e)}", style="red")
+        console.print(traceback.format_exc(), style="red")  # Grid trace output
         sys.exit(1)
 
 if __name__ == "__main__":

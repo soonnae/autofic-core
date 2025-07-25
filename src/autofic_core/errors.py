@@ -6,7 +6,7 @@ class AutoficError(Exception):
 
 class GitHubTokenMissingError(AutoficError):
     def __init__(self):
-        message = f"[ ERROR ]  GitHub token is missing: GITHUB_TOKEN is not set in the environment."
+        message = f"[ ERROR ]  GitHub token is missing or invalid: Please ensure that the GITHUB_TOKEN environment variable is set correctly and contains a valid token."
         super().__init__(message)
 
 class RepoURLFormatError(AutoficError):
@@ -25,14 +25,21 @@ class ForkFailedError(AutoficError):
         message = f"[ ERROR ]  Failed to fork repository (HTTP {status_code}) - {msg}"
         super().__init__(message)
 
+class AccessDeniedError(AutoficError):
+    def __init__(self, path, original_error):
+        message = (
+            f"[ ERROR ]  Access to the path '{path}' was denied. "
+            "Please close any applications or terminals using the directory and try again."
+        )
+        super().__init__(message)
+        self.original_error = original_error
+
 # downloader.py
 
 class FileDownloadError(AutoficError):
     def __init__(self, path, original_error):
         message = f"{path} Failed to download file: {original_error}"
         super().__init__(message)
-        self.path = path
-        self.original_error = original_error
 
 # semgrep_runner.py
 
