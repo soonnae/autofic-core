@@ -4,6 +4,7 @@ import time
 import os
 import sys
 from autofic_core.errors import *
+import traceback
 from pathlib import Path
 from rich.console import Console
 from pyfiglet import Figlet
@@ -45,11 +46,7 @@ class RepositoryManager:
         self.clone_path = None
         try:
             self.handler = GitHubRepoHandler(repo_url=self.repo_url)
-        except GitHubTokenMissingError as e:
-            console.print(f"[ ERROR ] GitHub token is missing: {e}", style="red")
-            raise
-        except RepoURLFormatError as e:
-            console.print(f"[ ERROR ] Invalid repository URL: {e}", style="red")
+        except (GitHubTokenMissingError, RepoURLFormatError) :
             raise
 
     def clone(self):
@@ -61,23 +58,18 @@ class RepositoryManager:
                 self.handler.fork()
                 time.sleep(1)
                 console.print("\n[ SUCCESS ] Fork completed\n", style="green")
-        except ForkFailedError as e:
-            console.print(f"[ ERROR ] Failed to fork repository: {e}", style="red")
-            raise
 
-        try:
             self.clone_path = Path(self.handler.clone_repo(save_dir=str(self.save_dir), use_forked=self.handler.needs_fork))
             console.print(f"\n[ SUCCESS ] Repository cloned successfully: {self.clone_path}\n", style="green")
+
+        except ForkFailedError as e:
+            sys.exit(1)
+
         except RepoAccessError as e:
-            console.print(f"[ ERROR ] Cannot access repository: {e}", style="red")
             raise
+
         except (PermissionError, OSError) as e:
-            console.print(f"[ ERROR ] Access denied while cloning repository: {e}", style="red")
-            console.print("💡 Close any editors or terminals using the directory and try again.", style="yellow")
-            raise
-        except Exception as e:
-            console.print(f"[ ERROR ] Unexpected error during cloning: {e}", style="red")
-            raise
+            raise AccessDeniedError(path=str(self.save_dir), original_error=e)
 
 class SemgrepHandler:
     def __init__(self, repo_path: Path, save_dir: Path):
@@ -307,7 +299,7 @@ class LLMProcessor:
         retry_prompt_generator = RetryPromptGenerator(parsed_dir=self.parsed_dir)
         retry_prompts = retry_prompt_generator.generate_prompts()
 
-        console.print("[RETRY] Regenerating GPT responses for modified files...\n")
+        console.print("[ RETRY ] Regenerating GPT responses for modified files...\n")
 
         llm = LLMRunner() 
         retry_output_dir = self.save_dir / "retry_llm"
@@ -410,7 +402,7 @@ class AutoFiCPipeline:
             
             merged_path = self.save_dir / "sast" / "merged_snippets.json"
             if not merged_path.exists():
-                console.print("[INFO] No merged_snippets.json file found. Skipping LLM stage.\n", style="cyan")
+                console.print("[ INFO ] No merged_snippets.json file found. Skipping LLM stage.\n", style="cyan")
                 sys.exit(0)
 
             with open(merged_path, "r", encoding="utf-8") as f:
@@ -425,7 +417,7 @@ class AutoFiCPipeline:
                 sys.exit(1)
             
             if not prompts:
-                console.print("[INFO] No valid prompts returned from LLM processor. Exiting pipeline early.\n", style="cyan")
+                console.print("[ INFO ] No valid prompts returned from LLM processor. Exiting pipeline early.\n", style="cyan")
                 sys.exit(0)
 
             self.llm_processor.extract_and_save_parsed_code()
@@ -472,7 +464,7 @@ SAST_TOOL_CHOICES = ['semgrep', 'codeql', 'snykcode']
 @click.command()
 @click.option('--explain', is_flag=True, help="Print AutoFiC usage guide.")
 @click.option('--repo', required=False, help="Target GitHub repository URL to analyze (required).")
-@click.option('--save-dir', default="artifacts/downloaded_repo", help="Directory to save analysis results.")
+@click.option('--save-dir', required=False, default="artifacts/downloaded_repo", help="Directory to save analysis results.")
 @click.option(
     '--sast',
     type=click.Choice(SAST_TOOL_CHOICES, case_sensitive=False),
@@ -488,24 +480,30 @@ SAST_TOOL_CHOICES = ['semgrep', 'codeql', 'snykcode']
 def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
     log_manager = LogManager()
     log_gen = LogGenerator()
-    
-    if explain:
-        print_help_message()
-        return
-
-    if not repo:
-        click.echo(" --repo is required!", err=True)
-        return
-
-    if llm and llm_retry:
-        click.secho("[ ERROR ]  The --llm-retry option includes --llm automatically. Do not specify both!", fg="red")
-        return
-
-    if not sast and (llm or llm_retry):
-        click.secho("[ ERROR ] The --llm or --llm-retry options cannot be used without --sast!", fg="red")
-        return
 
     try:
+        if explain:
+            print_help_message()
+            return
+
+        if not repo:
+            raise NoRepositoryError()
+        
+        if not save_dir:
+            raise NoSaveDirError()
+
+        if llm and llm_retry:
+            raise LLMRetryOptionError()
+        
+        if not sast and (llm or llm_retry):
+            raise LLMWithoutSastError()
+        
+        if not (llm or llm_retry) and patch:
+            raise PatchWithoutLLMError()
+        
+        if not patch and pr:
+            raise PRWithoutPatchError()
+        
         llm_flag = llm or llm_retry
         pipeline = AutoFiCPipeline(repo, Path(save_dir), sast, llm=llm_flag, llm_retry=llm_retry, sast_tool=sast.lower())
         pipeline.run()
@@ -520,7 +518,7 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
             patch_manager.run()
 
         if pr:
-            # PR 자동화
+            # PR automation
             branch_num = 1
             base_branch = 'main'
             branch_name = "UNKNOWN"
@@ -560,8 +558,8 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
             # Chapter 7
             pr_procedure.current_main_branch()
             # Chapter 8,9
-            pr_number = pr_procedure.generate_pr()
-            pr_procedure.create_pr()
+            pr_procedure.generate_pr()
+            pr_number = pr_procedure.create_pr()
 
             # for log
             repo_data = log_gen.generate_repo_log(save_dir=save_dir.parent, name=repo_name, owner=upstream_owner,
@@ -570,8 +568,14 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
             log_manager.add_pr_log(pr_log_data)
             log_manager.add_repo_status(repo_data)
 
+    except AutoficError as e:
+        console.print(str(e), style="red")
+        sys.exit(1)
+
     except Exception as e:
-            console.print(f"[ ERROR ] {e}", style="red")
+        console.print(f"[ UNEXPECTED ERROR ] {str(e)}", style="red")
+        console.print(traceback.format_exc(), style="red")  # Grid trace output
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
