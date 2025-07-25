@@ -19,7 +19,7 @@ def print_summary(repo_url: str, detected_issues_count: int, output_dir: str, re
 
     repo_name = extract_repo_name(repo_url)
     console.print(f"✔️  [bold]Target Repository:[/bold] {repo_name}")
-    console.print(f"✔️  [bold]Files with detected vulnerabilities:[/bold] {detected_issues_count} 개")
+    console.print(f"✔️  [bold]Files with detected vulnerabilities:[/bold] {detected_issues_count} files")
     console.print(f"✔️  [bold]LLM Responses:[/bold] Saved in the 'llm' folder")
 
     console.print(f"\n[bold magenta]{'━'*64}[/bold magenta]\n")

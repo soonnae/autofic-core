@@ -155,3 +155,19 @@ This project is licensed under the Apache 2.0 License - see the [LICENSE](https:
 * Issues/Feature Requests : [GitHub Issues](https://github.com/AutoFiC/autofic-core/issues)
 * Main Team : [AutoFiC Organization](https://github.com/AutoFiC)
 * Main Page : [AutoFiC Official](https://autofic.github.io)
+
+
+## 👨‍💻 Developers
+
+| Name | GitHub | Role |
+|------|--------|------|
+| Minchae Kim | [@minxxcozy](https://github.com/minxxcozy) | 👩🏻‍💻 Development Team |
+| Eunsol Kim | [@eunsol1530](https://github.com/eunsol1530) | 👩🏻‍💻 Development Team |
+| Jeongmin Oh | [@soonae](https://github.com/soonnae) | 👩🏻‍💻 Development Team |
+| Inyeong Jang | [@726jang](https://github.com/726jang) | 👩🏻‍💻 Development Team |
+| Hongseo Jang | [@pxxguin](https://github.com/pxxguin) | 🔬 Research Team |
+| Yunji Jeong | [@jungyun404](https://github.com/jungyun404) | 🔬 Research Team |
+| Yunjeong Choe | [@yjchoe818](https://github.com/yjchoe818) | 🔬 Research Team |
+| Seonju Park | [@seoonju)](https://github.com/seoonju) | 🔬 Research Team |
+| Suhyun Park | [@lovehyun](https://github.com/lovehyun) | 👨🏻‍🏫 Mentor |
+| Changhyun Lee | [@eeche](https://github.com/eeche) | 👨🏻‍🏫 Project Leader |
