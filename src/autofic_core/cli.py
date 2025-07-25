@@ -558,8 +558,8 @@ def main(explain, repo, save_dir, sast, llm, llm_retry, patch, pr):
             # Chapter 7
             pr_procedure.current_main_branch()
             # Chapter 8,9
-            pr_number = pr_procedure.generate_pr()
-            pr_procedure.create_pr()
+            pr_procedure.generate_pr()
+            pr_number = pr_procedure.create_pr()
 
             # for log
             repo_data = log_gen.generate_repo_log(save_dir=save_dir.parent, name=repo_name, owner=upstream_owner,
