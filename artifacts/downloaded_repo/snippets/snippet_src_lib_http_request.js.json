@@ -1,1 +1,0 @@
-"            agent: (this.parsedUrl.protocol === 'https:' ? httpsAgent : httpAgent),\n            headers: this.options.headers || {},\n            host: this.parsedUrl.hostname,\n            method: this.method,\n            path: this.parsedUrl.pathname,\n            port: this.parsedUrl.port,\n            rejectUnauthorized: false\n        let httpOptions = {\n        };"

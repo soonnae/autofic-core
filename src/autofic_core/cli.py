@@ -464,8 +464,7 @@ SAST_TOOL_CHOICES = ['semgrep', 'codeql', 'snykcode']
 @click.command()
 @click.option('--explain', is_flag=True, help="Print AutoFiC usage guide.")
 @click.option('--repo', required=False, help="Target GitHub repository URL to analyze (required).")
-@click.option('--save-dir', required=False, help="Directory to save analysis results.")
-#@click.option('--save-dir', default="artifacts/downloaded_repo", help="Directory to save analysis results.")
+@click.option('--save-dir', required=False, default="artifacts/downloaded_repo", help="Directory to save analysis results.")
 @click.option(
     '--sast',
     type=click.Choice(SAST_TOOL_CHOICES, case_sensitive=False),
