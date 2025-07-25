@@ -6,19 +6,33 @@ class AutoficError(Exception):
 
 class GitHubTokenMissingError(AutoficError):
     def __init__(self):
-        super().__init__("GITHUB_TOKEN is not set in the environment.")
+        message = f"[ ERROR ]  GitHub token is missing or invalid: Please ensure that the GITHUB_TOKEN environment variable is set correctly and contains a valid token."
+        super().__init__(message)
 
 class RepoURLFormatError(AutoficError):
     def __init__(self, repo_url):
-        super().__init__(f"Invalid GitHub repository URL format: {repo_url}")
+        message = f"[ ERROR ]  Invalid GitHub repository URL format: {repo_url}"
+        super().__init__(message)
 
 class RepoAccessError(AutoficError):
-    def __init__(self):
-        super().__init__("Failed to access the repository.")
+    def __init__(self, original_error):
+        message = f"[ ERROR ]  Cannot access repository: {original_error}"
+        super().__init__(message)
+        self.original_error = original_error
 
-class ForkFailedError(RepoAccessError):
-    def __init__(self, status_code, message):
-        super().__init__(f"Failed to fork repository (HTTP {status_code}) - {message}")
+class ForkFailedError(AutoficError):
+    def __init__(self, status_code, msg):
+        message = f"[ ERROR ]  Failed to fork repository (HTTP {status_code}) - {msg}"
+        super().__init__(message)
+
+class AccessDeniedError(AutoficError):
+    def __init__(self, path, original_error):
+        message = (
+            f"[ ERROR ]  Access to the path '{path}' was denied. "
+            "Please close any applications or terminals using the directory and try again."
+        )
+        super().__init__(message)
+        self.original_error = original_error
 
 # downloader.py
 
@@ -26,8 +40,6 @@ class FileDownloadError(AutoficError):
     def __init__(self, path, original_error):
         message = f"{path} Failed to download file: {original_error}"
         super().__init__(message)
-        self.path = path
-        self.original_error = original_error
 
 # semgrep_runner.py
 
@@ -124,30 +136,35 @@ class PatchFailMessages:
     PATCH_FAILED = "[ FAIL ] Patch failed: {}"
     FALLBACK_APPLY_FAILED = "[ FAIL ] Fallback diff failed: {}"
 
-# # cli.py
+# cli.py
 
-# class PermissionDeniedError(AutoficError):
-#     def __init__(self, original_exception: Exception):
-#         message = (
-#             f"{original_exception}\n"
-#             "Please close any editors or terminals using the folder and try again."
-#         )
-#         super().__init__(message)
+class NoRepositoryError(AutoficError):
+    def __init__(self):
+        message = f"[ ERROR ]  The --repo option is required!"
+        super().__init__(message)
 
-# class UnexpectedAutoficError(AutoficError):
-#     def __init__(self, original_exception: Exception):
-#         super().__init__("An unexpected error occurred: {original_exception}\n")
+class NoSaveDirError(AutoficError):
+    def __init__(self):
+        message = f"[ ERROR ]  The --save-dir option is required"
+        super().__init__(message)
 
-# class SASTExecutionError(AutoficError):
-#     def __init__(self, tool: str, original_exception: Exception):
-#         super().__init__("SAST tool [{tool}] failed to execute: {original_exception}\n")
-#         self.tool = tool
-#         self.original_exception = original_exception
+class LLMRetryOptionError(AutoficError):
+    def __init__(self):
+        message = f"[ ERROR ]  The --llm-retry option includes --llm automatically. Do not specify both!"
+        super().__init__(message)
 
-# class UnknownSnippetTypeError(AutoficError):
-#     def __init__(self, obj):
-#         super().__init__("Unknown snippet type encountere.")
+class LLMWithoutSastError(AutoficError):
+    def __init__(self):
+        message = f"[ ERROR ]  The --llm or --llm-retry options cannot be used without --sast!"
+        super().__init__(message)
 
-# class MergedSnippetsLoadError(AutoficError):
-#     def __init__(self, original_exception: Exception):
-#         super().__init__("Failed to load merged snippets from your path.\n")
+class PatchWithoutLLMError(AutoficError):
+    def __init__(self):
+        message = f"[ ERROR ]  The --patch option cannot be used without --llm or --llm-retry"
+        super().__init__(message)
+
+class PRWithoutPatchError(AutoficError):
+    def __init__(self):
+        message = f"[ ERROR ]  The --pr option cannot be used without --patch!"
+        super().__init__(message)
+
