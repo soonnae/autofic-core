@@ -66,7 +66,7 @@ class PatchApplier:
             )
 
             if result.returncode == 0:
-                self.console.print(f"[white][✓] Patch applied: {patch_file.name}[/white]")
+                self.console.print(f"[white][✓] Patch applied: {patch_file.name}[/white]\n")
                 return True
             else:
                 self.console.print(PatchFailMessages.PATCH_FAILED.format(patch_file.name), style="yellow")
