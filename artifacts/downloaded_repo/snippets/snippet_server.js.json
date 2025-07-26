@@ -1,0 +1,1 @@
+"  cookie: { secure: false }\n  resave: true,\n  saveUninitialized: true,\n  secret: 'keyboard cat',\napp.use(session({\n}))"

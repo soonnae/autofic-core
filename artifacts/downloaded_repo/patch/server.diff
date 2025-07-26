@@ -1,0 +1,22 @@
+--- a/server.js
++++ b/server.js
+@@ -21,10 +21,17 @@
+ 
+ // Intialize Session
+ app.use(session({
+-  secret: 'keyboard cat',
++  secret: process.env.SESSION_SECRET || 'default_secret',
+   resave: true,
+   saveUninitialized: true,
+-  cookie: { secure: false }
++  name: 'session_id',
++  cookie: {
++    secure: process.env.NODE_ENV === 'production',
++    httpOnly: true,
++    domain: 'example.com',
++    expires: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
++    path: '/'
++  }
+ }))
+ 
+ // Initialize Passport
