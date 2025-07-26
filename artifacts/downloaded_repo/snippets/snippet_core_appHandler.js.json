@@ -1,1 +1,0 @@
-"\t\tres.redirect(req.query.url)\n\t\tvar products = libxmljs.parseXmlString(req.files.products.data.toString('utf8'), {noent:true,noblanks:true})\n\t\tvar products = serialize.unserialize(req.files.products.data.toString('utf8'))\n\tdb.sequelize.query(query, {"
