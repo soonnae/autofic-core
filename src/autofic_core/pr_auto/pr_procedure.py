@@ -1,4 +1,5 @@
-# Copyright 2025 Autofic Authors. All Rights Reserved.
+# =============================================================================
+# Copyright 2025 AutoFiC Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,68 +23,13 @@ import time
 import datetime
 import requests
 import subprocess
-from pydantic import BaseModel
-from typing import List, Optional
+from pathlib import Path
+from typing import List
 from collections import defaultdict
-
-"""
-Pydantic Vulnerability Report Model Structure
-
-- VulnerabilityReport
-  - results: List of VulnerabilityItem
-    - path: File path
-    - start: Start position (dict)
-    - end: End position (dict)
-    - extra: VulnerabilityExtra
-      - message: Description message
-      - severity: Severity level
-      - metadata: VulnerabilityMeta
-        - vulnerability_class: List of vulnerability categories
-        - cwe: List of CWE identifiers
-        - references: List of reference links
-"""
-
-class VulnerabilityMeta(BaseModel):
-    """
-    Metadata for a single vulnerability.
-    - vulnerability_class: List of vulnerability categories (strings)
-    - cwe: List of CWE identifiers (strings)
-    - references: List of reference links (strings)
-    """
-    vulnerability_class: Optional[List[str]] = []
-    cwe: Optional[List[str]] = []
-    references: Optional[List[str]] = []
-
-class VulnerabilityExtra(BaseModel):
-    """
-    Message, severity, and metadata for a vulnerability.
-    - message: Description message
-    - severity: Severity level (default: UNKNOWN)
-    - metadata: VulnerabilityMeta object
-    """
-    message: Optional[str] = ""
-    severity: Optional[str] = "UNKNOWN"
-    metadata: Optional[VulnerabilityMeta] = VulnerabilityMeta()
-
-class VulnerabilityItem(BaseModel):
-    """
-    An individual vulnerability result item.
-    - path: File path where the vulnerability was found
-    - start: Start position (e.g., {"line": 10, "col": 2})
-    - end: End position (e.g., {"line": 10, "col": 18})
-    - extra: VulnerabilityExtra object
-    """
-    path: Optional[str] = "Unknown"
-    start: Optional[dict] = {}
-    end: Optional[dict] = {}
-    extra: Optional[VulnerabilityExtra] = VulnerabilityExtra()
-
-class VulnerabilityReport(BaseModel):
-    """
-    Top-level vulnerability report object.
-    - results: List of VulnerabilityItem objects
-    """
-    results: List[VulnerabilityItem] = []
+from autofic_core.sast.snippet import BaseSnippet
+from autofic_core.sast.semgrep.preprocessor import SemgrepPreprocessor
+from autofic_core.sast.codeql.preprocessor import CodeQLPreprocessor
+from autofic_core.sast.snykcode.preprocessor import SnykCodePreprocessor
 
 class PRProcedure:
     """
@@ -98,7 +44,7 @@ class PRProcedure:
     """
 
     def __init__(self, base_branch: str, repo_name: str,
-                 upstream_owner: str, save_dir: str, repo_url: str, token: str, user_name: str):
+                upstream_owner: str, save_dir: str, repo_url: str, token: str, user_name: str, json_path: str, tool: str):
         """
         Initialize PRProcedure with repository and user configuration.
 
@@ -118,6 +64,8 @@ class PRProcedure:
         self.repo_url = repo_url
         self.token = token
         self.user_name = user_name
+        self.json_path = json_path
+        self.tool = tool
         
     def post_init(self):
         """
@@ -159,29 +107,35 @@ class PRProcedure:
             next_num = 1
         self.branch_name = f'WHS_VULN_DETEC_{next_num}'
         subprocess.run(['git', 'checkout', '-b', self.branch_name], check=True)
-    
+        
     def change_files(self):
         """
-        Simulates file changes (for demo: creates a dummy file and stages it) -> test.txt.
-        Loads a Semgrep JSON result and commits with a summary message.
-        Pushes the branch to the fork.
-        If diff generator implemented, workflow_filename need to change '.'
+        Stages all modified files and commits with a summary message based on vulnerability scan results.
+        Pushes the branch to the forked repository.
         """
-        workflow_filename = 'test.txt'
-        workflow_content = "Codes is Modified!!!"
-        with open(workflow_filename, 'w', encoding='utf-8') as f:
-            f.write(workflow_content)
-        subprocess.run(['git', 'add', workflow_filename], check=True)
-
-        self.json_path = '../sast/before.json'
-        with open(self.json_path, 'r', encoding='utf-8') as f:
+        with open('../sast/merged_snippets.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
-        self.vulnerabilities = len(data.get("results",[]))
-        subprocess.run(['git', 'commit', '-m', f"[Autofic] {self.vulnerabilities} malicious code detected!!"], check=True)
+        self.vulnerabilities = len(data)
+        
+        # Stage all modified/created files except ignored ones
+        subprocess.run(['git', 'add', '--all'], check=True)
+
+        # Remove common directories from staging
+        ignore_paths = [
+            '.codeql-db', '.codeql-results', 'node_modules', '.github', 
+            '.snyk', 'snyk_result.sarif.json', '.eslintcache', 'eslint_tmp_env', '.DS_Store'
+        ]
+        for path in ignore_paths:
+            if os.path.exists(path):
+                subprocess.run(['git', 'reset', '-q', path], check=False)
+
+        commit_message = f"[Autofic] {self.vulnerabilities} malicious code detected!!"
+        subprocess.run(['git', 'commit', '-m', commit_message], check=True)
+
         try:
             subprocess.run(['git', 'push', 'origin', self.branch_name], check=True)
             return True
-        except subprocess.CalledProcessError as e:
+        except subprocess.CalledProcessError:
             return False
     
     def current_main_branch(self):
@@ -198,7 +152,7 @@ class PRProcedure:
         else:
             self.base_branch = branches[0].split('/')[-1]
             
-    def generate_pr(self):
+    def generate_pr(self) -> str:
         """
         Creates a pull request on the fork repository.
         Uses vulnerability scan results (by semgrep) to generate a detailed PR body.
@@ -206,7 +160,15 @@ class PRProcedure:
         """
         print(f"[INFO] Creating PR on {self.user_name}/{self.repo_name}. base branch: {self.base_branch}")
         pr_url = f"https://api.github.com/repos/{self.user_name}/{self.repo_name}/pulls"
-        pr_body = self.generate_markdown(self.json_path)
+        if self.tool == "semgrep":
+            snippets = SemgrepPreprocessor.preprocess(self.json_path)
+        elif self.tool == "codeql":
+            snippets = CodeQLPreprocessor.preprocess(self.json_path)
+        elif self.tool == "snykcode":
+            snippets = SnykCodePreprocessor.preprocess(self.json_path)
+        else:
+            raise ValueError(f"Unknown tool: {self.tool}")
+        pr_body = self.generate_markdown(snippets)
         data_post = {
             "title": f"[Autofic] Security Patch {datetime.datetime.now().strftime('%Y-%m-%d')}",
             "head": f"{self.user_name}:{self.branch_name}",
@@ -219,8 +181,8 @@ class PRProcedure:
         }
         pr_resp = requests.post(pr_url, json=data_post, headers=headers)
         if pr_resp.status_code in (201, 202):
-            time.sleep(0.05)
-            return True
+            pr_json = pr_resp.json()
+            time.sleep(0.05) 
         else:
             return False
     
@@ -228,6 +190,7 @@ class PRProcedure:
         """
         After PR is opened on fork, waits for CI to pass and then automatically creates a PR to the upstream repository.
         """
+
         # Step 1. Find latest open PR on fork
         prs_url = f"https://api.github.com/repos/{self.user_name}/{self.repo_name}/pulls"
         headers = {
@@ -275,9 +238,21 @@ class PRProcedure:
         else:
             return
         
+        workflow_file = Path(".github/workflows/pr_notify.yml")
+        if workflow_file.exists():
+            subprocess.run(['git', 'rm', str(workflow_file)], check=True)
+            subprocess.run(['git', 'commit', '-m', "chore: remove CI workflow before upstream PR"], check=True)
+            subprocess.run(['git', 'push', 'origin', self.pr_branch], check=True)
+
         # Step 4. If all checks pass('success'), create PR to upstream/original repository
         pr_url = f"https://api.github.com/repos/{self.upstream_owner}/{self.repo_name}/pulls"
-        pr_body = self.generate_markdown('../sast/before.json')
+        if self.tool == "semgrep":
+            snippets = SemgrepPreprocessor.preprocess(self.json_path)
+        elif self.tool == "codeql":
+            snippets = CodeQLPreprocessor.preprocess(self.json_path)
+        elif self.tool == "snykcode":
+            snippets = SnykCodePreprocessor.preprocess(self.json_path)
+        pr_body = self.generate_markdown(snippets) 
         data_post = {
             "title": f"[Autofic] Security Patch {datetime.datetime.now().strftime('%Y-%m-%d')}",
             "head": f"{self.user_name}:{self.pr_branch}",
@@ -287,103 +262,159 @@ class PRProcedure:
         pr_resp = requests.post(pr_url, json=data_post, headers=headers)
         if pr_resp.status_code in (201, 202):
             pr_json = pr_resp.json()
-            return pr_number            
+            return pr_json.get("number")         
         else:
             return
 
-    def generate_markdown(self, json_path: str) -> str:
-        """ Generates a markdown summary from a Semgrep JSON report.
-        The markdown includes:
-        - Security patch summary
-        - List of detected vulnerabilities with file, line, severity, and references
-        - Fix suggestions extracted from markdown files in the '../llm' directory
-        - General fix details
-        """
-        def extract_fix_suggestion(md_path: str) -> str:
-            """ Extracts the fix suggestion from a markdown file.
-            Assumes the fix suggestion is under a section"""
+    def generate_markdown(self, snippets: List[BaseSnippet]) -> str:
+        def get_severity_emoji(level: str) -> str:
+            level = level.upper()
+            return {
+                "ERROR": "🛑 ERROR",
+                "WARNING": "⚠️ WARNING",
+                "NOTE": "💡 NOTE"
+            }.get(level, level)
+        
+        def generate_markdown_from_llm(llm_path: str) -> str:
+            """
+            Parses an LLM-generated markdown response and formats it into a GitHub PR body.
+
+            Expected sections in the markdown file:
+            1. Vulnerability Description
+            2. Potential Risks
+            3. Recommended Fix
+            4. Final Patched Code
+            5. References
+            """
             try:
-                with open(md_path, 'r', encoding='utf-8') as f:
+                with open(llm_path, encoding='utf-8') as f:
                     content = f.read()
-                    pattern = r'3\.\s*\**개선\s*방안\**\s*:?[\n\r]+(.*?)(?=\n\s*\d+\.\s|\Z)'
-                    match = re.search(pattern, content, re.DOTALL | re.IGNORECASE)
-                    if match:
-                        return match.group(1).strip()
-            except Exception:
-                pass
-            return "Fix suggestion not found."
+            except FileNotFoundError:
+                return {
+                    "Vulnerability": "",
+                    "Risks": "",
+                    "Recommended Fix": "",
+                    "References": ""
+                }
+            
+            sections = {
+                "Vulnerability": "",
+                "Risks": "",
+                "Recommended Fix": "",
+                "References": ""
+            }
 
-        with open(json_path, 'r', encoding='utf-8') as f:
-            try:
-                data = VulnerabilityReport.parse_raw(f.read())
-            except Exception:
-                f.seek(0)
-                data_dict = json.load(f)
-                data = VulnerabilityReport(**data_dict)
+            pattern = re.compile(
+                r"1\. Vulnerability Description\s*[:：]?\s*(.*?)\s*"
+                r"2\. Potential Risk\s*[:：]?\s*(.*?)\s*"
+                r"3\. Recommended Fix\s*[:：]?\s*(.*?)\s*"
+                r"(?:4\. Final Modified Code.*?\s*)?"
+                r"5\. Additional Notes\s*[:：]?\s*(.*)",
+                re.DOTALL
+            )
 
-        grouped = defaultdict(list)
-        for item in data.results:
-            filename = os.path.basename(item.path)
-            line = item.start.get("line", "?") if item.start else "?"
-            grouped[(filename, line)].append(item)
+            match = pattern.search(content)
+            if match:
+                sections["Vulnerability"] = match.group(1).strip()
+                sections["Risks"] = match.group(2).strip()
+                sections["Recommended Fix"] = match.group(3).strip()
+                sections["References"] = match.group(4).strip()
 
-        md = ["## 🛠️ Security Patch Summary\n"]
-        if not grouped:
+            return sections
+
+        grouped_by_file = defaultdict(list)
+        for item in snippets:
+            filename = os.path.relpath(item.path, self.save_dir).replace("\\", "/")
+            grouped_by_file[filename].append(item)
+
+        md = [
+            "## 🔧 About This Pull Request",
+            "This patch was automatically created by **[AutoFiC](https://autofic.github.io)**,\nan open-source framework that combines **static analysis tools** with **AI-driven remediation**.",
+            "\nUsing **Semgrep**, **CodeQL**, and **Snyk Code**, AutoFiC detected potential **security flaws** and applied **verified fixes**.",
+            "Each patch includes **contextual explanations** powered by a **large language model** to support **review and decision-making**.",
+            "",
+            "## 🔐 Summary of Security Fixes",
+        ]
+
+        if not grouped_by_file:
             md.append("No vulnerabilities detected. No changes made.\n")
             return "\n".join(md)
+        
+        md.append("### Overview\n")
+        md.append(f"> Detected by: **{self.tool.upper()}**\n")
+        md.append("| File | Total Issues |")
+        md.append("|------|---------------|")
+        for filename, items in grouped_by_file.items():
+            md.append(f"| `{filename}` | **{len(items)}** |")
+        
+        file_idx = 1
+        for filename, items in grouped_by_file.items():
+            md.append(f"### {file_idx}. `{filename}`")
+            md.append("#### 🧩 SAST Analysis Summary")
+            has_cwe = any(item.cwe for items in grouped_by_file.values() for item in items)
+            has_ref = any(item.references for items in grouped_by_file.values() for item in items)
 
-        for idx, ((filename, line), items) in enumerate(grouped.items(), 1):
-            start_col = items[0].start.get("col", "?") if items[0].start else "?"
-            end_col = items[0].end.get("col", "?") if items[0].end else "?"
-            vuln_type = ", ".join(items[0].extra.metadata.vulnerability_class or [])
-            cwe = ", ".join(items[0].extra.metadata.cwe or [])
-            md.append(f"### {idx}. {vuln_type or cwe or 'N/A'} Detected\n")
-            md.append(f"- **🗂️ File:** {filename}")
-            md.append(f"- **#️⃣ Line:** {line} (col {start_col}~{end_col})")
-            first_severity = items[0].extra.severity or "UNKNOWN"
-            first_refs = items[0].extra.metadata.references if items[0].extra.metadata and items[0].extra.metadata.references else []
-            if first_refs:
-                md.append(f"- **🛡️ Severity:** {first_severity}")
-                md.append(f"- **🔗 Reference:** {first_refs[0]}")
-            else:
-                md.append(f"- **🛡️ Severity:** {first_severity}")
-            for i, item in enumerate(items, 1):
-                msg = item.extra.message or ""
-                md.append(f"- **✍️ Semgrep Message {i}:** {msg}")
-            for eachname in os.listdir('../llm'):
-                if self.contains_all(eachname, filename, str(line)):
-                    md.append(f"- **🤖 How to fix :**")
-                    md_path = os.path.join('../llm', eachname)
-                    fix_text = extract_fix_suggestion(md_path)
-                    fix_lines = fix_text.strip().splitlines()
-                    for line_fix in fix_lines:
-                        line_fix = line_fix.strip()
-                        if line_fix.startswith("-"):
-                            md.append(f"  {line_fix}")
-                        else:
-                            md.append(f"  - {line_fix}")
-                    break
+            header = ["Line", "Type", "Level"]
+            if has_cwe:
+                header.append("CWE")
+            if has_ref:
+                header.append("Ref")
+            md.append("| " + " | ".join(header) + " |")
+            md.append("|" + "|".join(["-" * len(col) for col in header]) + "|")
 
-        md.append("\n### 💉 Fix Details\n")
-        md.append("All vulnerable code paths have been refactored to use parameterized queries or input sanitization as recommended in the references above. Please refer to the diff for exact code changes.\n")
-        md.append("---\n")
-        return "\n".join(md)
+            for item in items:
+                line_info = f"{item.start_line}" if item.start_line == item.end_line else f"{item.start_line}~{item.end_line}"
+                vuln = item.vulnerability_class[0] if item.vulnerability_class else "N/A"
+                severity = item.severity.upper() if item.severity else "N/A"
+                
+                row = [line_info, vuln, get_severity_emoji(severity)]
 
-    def generate_log_data(self, pr_number):
-        today = datetime.date.today().isoformat()
-        pr_creation_data = {
-            "date": today,
-            "repo": f"{self.user_name}/{self.repo_name}",
-            "pr_number": pr_number,
-        }
-        repo_status_data = {
-            "name": self.repo_name,
-            "repo_url": f"https://github.com/{self.upstream_owner}/{self.repo_name}",
-            "vulnerabilities": getattr(self, 'vulnerabilities', 0)
-        }
-        return pr_creation_data, repo_status_data    
+                if has_cwe:
+                    cwe = item.cwe[0].split(":")[0] if item.cwe else "N/A"
+                    row.append(cwe)
+                if has_ref:
+                    ref = item.references[0] if item.references else ""
+                    ref_link = f"[🔗]({ref})" if ref else ""
+                    row.append(ref_link)
+
+                md.append("| " + " | ".join(row) + " |")
+            
+            llm_dir = os.path.abspath(os.path.join(self.save_dir, '..', 'llm'))
+            for eachname in os.listdir(llm_dir):
+                if not eachname.endswith('.md'):
+                    continue
+                base_mdname = eachname[:-3] 
+                if base_mdname.startswith("response_"):
+                    base_mdname = base_mdname[len("response_"):]  
+                llm_target_path = base_mdname.replace("_", "/")
+                if item.path == llm_target_path:
+                    llm_path = os.path.join(llm_dir, eachname)
+                    llm_summary = generate_markdown_from_llm(llm_path)
+                    if llm_summary:
+                        md.append("#### 📝 LLM Analysis\n")
+                        if llm_summary["Vulnerability"]:
+                            md.append("#### 🔸 Vulnerability Description")
+                            md.append(llm_summary["Vulnerability"].strip())
+                        if llm_summary["Recommended Fix"]:
+                            md.append("#### 🔸 Recommended Fix")
+                            md.append(llm_summary["Recommended Fix"].strip())
+                        if llm_summary["References"]:
+                            md.append("#### 🔸 Additional Notes")
+                            md.append(llm_summary["References"].strip())
+
+            file_idx += 1
+
+        md.append("\n## 🛠 Fix Summary\n")
+        md.append(
+            "All identified **vulnerabilities** have been **remediated** following **security best practices** "
+            "such as **parameterized queries** and **proper input validation**. "
+            "Please refer to the **diff tab** for detailed **code changes**.\n"
+        )
+        md.append(
+            "If you have **questions** or **feedback** regarding this **automated patch**, feel free to reach out via **[AutoFiC GitHub](https://github.com/autofic)**.\n"
+        )
+        return "\n".join(md)    
 
     def contains_all(self, text, *keywords):
         """ Check if all keywords are present in the text."""
         return all(k in text for k in keywords)
-

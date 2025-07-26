@@ -1,8 +1,10 @@
 import os
 import json
 from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 class FlaskProcedure:
     """
@@ -32,6 +34,16 @@ class FlaskProcedure:
         empty_log = {"prs": [], "repos": []}
         self.save_log(empty_log)
 
+    def is_same_repo_entry(self, existing, new):
+        return all(
+            existing.get(k) == new.get(k)
+            for k in [
+                "name", "owner", "repo_url",
+                "vulnerabilities", "byClass",
+                "sastTool", "rerun", "analysis"
+            ]
+        )
+
     def add_pr(self, new_pr):
         data = self.load_log()
         data.setdefault("prs", []).append(new_pr)
@@ -41,7 +53,7 @@ class FlaskProcedure:
     def add_repo_status(self, new_repo):
         data = self.load_log()
         repos = data.setdefault("repos", [])
-        data["repos"] = [r for r in repos if r.get("name") != new_repo.get("name")]
+        data["repos"] = [r for r in repos if not self.is_same_repo_entry(r, new_repo)]
         data["repos"].append(new_repo)
         self.save_log(data)
         return new_repo
@@ -76,6 +88,29 @@ def add_repo_status():
     new_repo = request.get_json()
     added_repo = flask_manager.add_repo_status(new_repo)
     return jsonify({"status": "added", "repo": added_repo})
+
+@app.route('/update_approval', methods=['POST'])
+def update_approval():
+    data = request.get_json()
+    pr_number = data.get("pr_number")
+    approved = data.get("approved", True)
+
+    if pr_number is None:
+        return jsonify({"error": "pr_number is required"}), 400
+
+    log_data = flask_manager.load_log()
+    updated = False
+
+    for pr in log_data.get("prs", []):
+        if pr.get("pr_number") == pr_number:
+            pr["approved"] = approved
+            updated = True
+
+    if updated:
+        flask_manager.save_log(log_data)
+        return jsonify({"status": "updated", "pr_number": pr_number})
+    else:
+        return jsonify({"error": "PR not found"}), 404
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

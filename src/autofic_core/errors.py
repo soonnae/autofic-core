@@ -6,28 +6,40 @@ class AutoficError(Exception):
 
 class GitHubTokenMissingError(AutoficError):
     def __init__(self):
-        super().__init__("GITHUB_TOKEN이 설정되어 있지 않습니다.")
+        message = f"[ ERROR ]  GitHub token is missing or invalid: Please ensure that the GITHUB_TOKEN environment variable is set correctly and contains a valid token."
+        super().__init__(message)
 
 class RepoURLFormatError(AutoficError):
     def __init__(self, repo_url):
-        super().__init__(f"잘못된 GitHub URL 형식입니다 : {repo_url}")
-
-class RepoAccessError(AutoficError):
-    def __init__(self, message: str):
+        message = f"[ ERROR ]  Invalid GitHub repository URL format: {repo_url}"
         super().__init__(message)
 
-class ForkFailedError(RepoAccessError):
-    def __init__(self, status_code, message):
-        super().__init__(f"Fork 요청 실패 (코드: {status_code}) - {message}")
+class RepoAccessError(AutoficError):
+    def __init__(self, original_error):
+        message = f"[ ERROR ]  Cannot access repository: {original_error}"
+        super().__init__(message)
+        self.original_error = original_error
+
+class ForkFailedError(AutoficError):
+    def __init__(self, status_code, msg):
+        message = f"[ ERROR ]  Failed to fork repository (HTTP {status_code}) - {msg}"
+        super().__init__(message)
+
+class AccessDeniedError(AutoficError):
+    def __init__(self, path, original_error):
+        message = (
+            f"[ ERROR ]  Access to the path '{path}' was denied. "
+            "Please close any applications or terminals using the directory and try again."
+        )
+        super().__init__(message)
+        self.original_error = original_error
 
 # downloader.py
 
 class FileDownloadError(AutoficError):
     def __init__(self, path, original_error):
-        message = f"{path} 다운로드 실패: {original_error}"
+        message = f"{path} Failed to download file: {original_error}"
         super().__init__(message)
-        self.path = path
-        self.original_error = original_error
 
 # semgrep_runner.py
 
@@ -36,8 +48,15 @@ class SemgrepExecutionError(AutoficError):
         self.returncode = returncode
         self.stdout = stdout
         self.stderr = stderr
-        message = f"Semgrep 실행 실패 (리턴 코드: {returncode})"
+        message = f"Semgrep execution failed (return code:{returncode})"
         super().__init__(message)
+
+# snykcode_runner.py
+
+class SnykCodeErrorMessages:
+    TOKEN_MISSING = "[ ERROR ] SNYK_TOKEN environment variable not set."
+    NO_JS_FILES_FOUND = "[ ERROR ] No JavaScript/TypeScript files found to analyze."
+    CLI_NOT_FOUND = "[ ERROR ] Unable to locate Snyk CLI. Please install or set SNYK_CMD_PATH."
 
 # prompt_generator.py
 
@@ -47,25 +66,105 @@ class PromptGeneratorErrorCodes:
     INVALID_SNIPPET_LIST = "INVALID_SNIPPET_LIST"
 
 class PromptGeneratorErrorMessages:
-    EMPTY_SNIPPET = "빈 코드 스니펫입니다."
-    TEMPLATE_RENDER_ERROR = "템플릿 렌더링 중 오류가 발생했습니다."
-    INVALID_SNIPPET_LIST = "SemgrepSnippet 리스트가 아닙니다."
+    EMPTY_SNIPPET = "The provided code snippet is empty."
+    TEMPLATE_RENDER_ERROR = "An error occurred while rendering the prompt template."
+    INVALID_SNIPPET_LIST = "The input must be a list of SemgrepSnippet objects."
 
 class PromptGenerationException(AutoficError):
     def __init__(self, code: str, message: str):
-        super().__init__(message)
         self.code = code
+        super().__init__(f"[ ERROR ] Prompt generation failed ({code}): {message}")
 
-class LLMExecutionError(Exception):
-    def __init__(self, message: str):
-        self.message = message
-        super().__init__(f"LLM 실행 오류: {message}")
+# response_parser.py
 
-# diff_generator.py
-
-class DiffGenerationError(AutoficError):
+class ResponseParseError(AutoficError):
     def __init__(self, filename: str, reason: str):
-        message = f"[diff 생성 실패] 파일: {filename} - 이유: {reason}"
+        message = f"[ ERROR ] Failed to parse {filename}: {reason}"
         super().__init__(message)
         self.filename = filename
         self.reason = reason
+
+# llm_runner.py
+
+class LLMExecutionError(AutoficError):
+    def __init__(self, message: str):
+        super().__init__(f"[ ERROR ] LLM execution failed: {message}")
+        self.message = message
+
+class CodeQLExecutionError(Exception):
+    """Raised when CodeQL execution fails."""
+    def __init__(self):
+        super().__init__("[ERROR] CodeQL execution failed. Please check the log file for details.")
+        
+# retry_prompt_generator.py   
+
+class RetryPromptGenerationError(AutoficError):
+    def __init__(self, path: str, reason: str):
+        message = f"[ ERROR ] Failed to generate retry prompt for {path}: {reason}"
+        super().__init__(message)
+        self.path = path
+        self.reason = reason
+
+# diff_generator.py
+
+class DiffWarningMessages:
+    ORIGINAL_FILE_NOT_FOUND = "[ WARN ] Original file not found: {}"
+
+class DiffGenerationError(AutoficError):
+    def __init__(self, filename: str, reason: str):
+        message = f"[ ERROR ] Failed to generate diff: {filename} - {reason}"
+        super().__init__(message)
+        self.filename = filename
+        self.reason = reason
+        
+
+# apply_patch.py
+
+class PatchWarningMessages:
+    NO_DIFF_FILES = "[ WARN ] No .diff files found in {}"
+    PARSED_FILE_NOT_FOUND = "[ WARN ] Could not find matching file in parsed directory: {}"
+    RELATIVE_PATH_EXTRACTION_FAILED = "[ WARN ] Failed to extract relative path: {}"
+    ORIGINAL_FILE_MISSING = "[ WARN ] Original file does not exist: {}"
+    OVERWRITE_FILE_MISSING = "[ WARN ] Original file does not exist in repo: {}"
+
+class PatchErrorMessages:
+    PATCH_EXCEPTION = "[ ERROR ] Exception while applying {}: {}"
+    FALLBACK_DIFF_FAILED = "[ ERROR ] Failed to generate fallback diff: {}"
+    OVERWRITE_FAILED = "[ ERROR ] Failed to overwrite repo file: {}"
+
+class PatchFailMessages:
+    PATCH_FAILED = "[ FAIL ] Patch failed: {}"
+    FALLBACK_APPLY_FAILED = "[ FAIL ] Fallback diff failed: {}"
+
+# cli.py
+
+class NoRepositoryError(AutoficError):
+    def __init__(self):
+        message = f"[ ERROR ]  The --repo option is required!"
+        super().__init__(message)
+
+class NoSaveDirError(AutoficError):
+    def __init__(self):
+        message = f"[ ERROR ]  The --save-dir option is required"
+        super().__init__(message)
+
+class LLMRetryOptionError(AutoficError):
+    def __init__(self):
+        message = f"[ ERROR ]  The --llm-retry option includes --llm automatically. Do not specify both!"
+        super().__init__(message)
+
+class LLMWithoutSastError(AutoficError):
+    def __init__(self):
+        message = f"[ ERROR ]  The --llm or --llm-retry options cannot be used without --sast!"
+        super().__init__(message)
+
+class PatchWithoutLLMError(AutoficError):
+    def __init__(self):
+        message = f"[ ERROR ]  The --patch option cannot be used without --llm or --llm-retry"
+        super().__init__(message)
+
+class PRWithoutPatchError(AutoficError):
+    def __init__(self):
+        message = f"[ ERROR ]  The --pr option cannot be used without --patch!"
+        super().__init__(message)
+
